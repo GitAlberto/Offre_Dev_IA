@@ -1,18 +1,26 @@
-# Environnement virtuel
+# Virtual environment
 .venv/
 
-# Fichiers temporaires
-*.tmp
+# Local secrets
+.env
+!.env.example
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Logs and temp files
 *.log
+*.tmp
 
-# Fichiers Python
-*.pyc
-*.pyo
+# IDE files
+.vscode/
+.idea/
 
-# Fichiers de données
-*.csv
-*.json
-*.xml
-
-# Fichiers de configuration
-*.env
+# Generated datasets
+data/raw/*
+!data/raw/README.md
+data/processed/*
+!data/processed/README.md

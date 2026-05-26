@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg[binary]
+python-dotenv
+pandas
+requests
+beautifulsoup4
+python-jose[cryptography]
+passlib[bcrypt]
+httpx
+pytest
+pyhive
