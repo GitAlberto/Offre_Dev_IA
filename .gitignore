@@ -1,0 +1,18 @@
+# Environnement virtuel
+.venv/
+
+# Fichiers temporaires
+*.tmp
+*.log
+
+# Fichiers Python
+*.pyc
+*.pyo
+
+# Fichiers de données
+*.csv
+*.json
+*.xml
+
+# Fichiers de configuration
+*.env
