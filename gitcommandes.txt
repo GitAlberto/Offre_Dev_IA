@@ -1,0 +1,29 @@
+# Faire un pull
+git pull
+
+# Faire un push
+git push
+
+# Faire un commit
+git commit -m "Commit message"
+
+# Add tout les fichiers
+git add .
+
+# Rebase origin/main
+git fetch origin && git rebase origin/main
+
+# Stash
+git stash
+
+# Stash pop
+git stash pop
+
+# Status
+git status
+
+# Voir les logs
+git log
+
+# Voir les branches
+git branch

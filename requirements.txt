@@ -6,6 +6,7 @@ python-dotenv
 pandas
 requests
 beautifulsoup4
+selenium
 python-jose[cryptography]
 passlib[bcrypt]
 httpx
