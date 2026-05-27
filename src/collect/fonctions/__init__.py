@@ -1,26 +1,42 @@
-"""Public entry points for source-specific collection functions.
+"""Points d'entree publics pour les fonctions de collecte par source.
 
-This package is meant to be imported by the future collection orchestrator
-located in `src/collect/collect.py`.
-
-Naming convention used in this package:
-- `collect_offres_*` for sources that primarily return job offers;
-- `collect_reference_*` for reference data sources;
-- `collect_aggregates_*` for aggregate-oriented analytical sources.
+Ce package expose les fonctions `collect_*` sans importer toutes les sources
+des l'ouverture du package. Cela permet d'isoler les tests d'une source meme
+si une autre source est temporairement en panne ou en cours de travail.
 """
 
-from .collect_aggregates_hive import collect_aggregates_hive
-from .collect_offres_france_travail import collect_offres_france_travail
-from .collect_offres_postgresql_history import collect_offres_postgresql_history
-from .collect_offres_welcome_to_the_jungle import (
-    collect_offres_welcome_to_the_jungle,
-)
-from .collect_reference_rome import collect_reference_rome
+from __future__ import annotations
 
-__all__ = [
-    "collect_aggregates_hive",
-    "collect_offres_france_travail",
-    "collect_offres_postgresql_history",
-    "collect_offres_welcome_to_the_jungle",
-    "collect_reference_rome",
-]
+from importlib import import_module
+from typing import Any
+
+
+EXPORTS_PAR_MODULE = {
+    "collect_aggregates_hive": "collect_aggregates_hive",
+    "collect_offres_france_travail": "collect_offres_france_travail",
+    "collect_offres_postgresql_history": "collect_offres_postgresql_history",
+    "collect_offres_welcome_to_the_jungle": (
+        "collect_offres_welcome_to_the_jungle"
+    ),
+    "collect_reference_rome": "collect_reference_rome",
+}
+
+__all__ = list(EXPORTS_PAR_MODULE)
+
+
+def __getattr__(name: str) -> Any:
+    """Importer paresseusement la source demandee uniquement quand il le faut."""
+
+    if name not in EXPORTS_PAR_MODULE:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    module = import_module(f".{EXPORTS_PAR_MODULE[name]}", __name__)
+    value = getattr(module, name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    """Afficher correctement les symboles publics du package."""
+
+    return sorted(list(globals().keys()) + __all__)

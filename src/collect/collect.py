@@ -32,29 +32,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from importlib import import_module
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-try:
-    # Usage normal quand le module est importe comme package.
-    from .fonctions import (
-        collect_aggregates_hive,
-        collect_offres_france_travail,
-        collect_offres_postgresql_history,
-        collect_offres_welcome_to_the_jungle,
-        collect_reference_rome,
-    )
-except ImportError:
-    # Usage pratique quand on lance directement :
-    # `python src/collect/collect.py`
-    from fonctions import (  # type: ignore
-        collect_aggregates_hive,
-        collect_offres_france_travail,
-        collect_offres_postgresql_history,
-        collect_offres_welcome_to_the_jungle,
-        collect_reference_rome,
-    )
 
 try:
     from dotenv import load_dotenv
@@ -69,6 +50,7 @@ DEFAULT_FRANCE_TRAVAIL_MAX_RESULTS = 150
 DEFAULT_FRANCE_TRAVAIL_MAX_PAGES = 20
 DEFAULT_FRANCE_TRAVAIL_QUERY_MODE = "broad"
 DEFAULT_FRANCE_TRAVAIL_TIMEOUT_SECONDS = 30
+DEFAULT_WTTJ_QUERY_MODE = "focused"
 
 SOURCE_KEYS = {
     "france_travail": "france_travail",
@@ -77,6 +59,92 @@ SOURCE_KEYS = {
     "postgresql_history": "postgresql_history",
     "hive_aggregates": "hive_aggregates",
 }
+SOURCE_IMPORT_SPECS = {
+    SOURCE_KEYS["france_travail"]: (
+        "collect_offres_france_travail",
+        "collect_offres_france_travail",
+    ),
+    SOURCE_KEYS["welcome_to_the_jungle"]: (
+        "collect_offres_welcome_to_the_jungle",
+        "collect_offres_welcome_to_the_jungle",
+    ),
+    SOURCE_KEYS["rome_reference"]: (
+        "collect_reference_rome",
+        "collect_reference_rome",
+    ),
+    SOURCE_KEYS["postgresql_history"]: (
+        "collect_offres_postgresql_history",
+        "collect_offres_postgresql_history",
+    ),
+    SOURCE_KEYS["hive_aggregates"]: (
+        "collect_aggregates_hive",
+        "collect_aggregates_hive",
+    ),
+}
+
+
+def construire_nom_package_sources() -> str:
+    """Retourner le nom de package a utiliser pour importer les collecteurs."""
+
+    if __package__:
+        return f"{__package__}.fonctions"
+
+    return "fonctions"
+
+
+def normaliser_sources_selectionnees(
+    only_sources: list[str] | None = None,
+    skip_sources: list[str] | None = None,
+) -> list[str]:
+    """Determiner les sources a executer en conservant l'ordre officiel."""
+
+    sources_disponibles = list(SOURCE_IMPORT_SPECS.keys())
+
+    if only_sources:
+        sources_selectionnees = [
+            source_name
+            for source_name in sources_disponibles
+            if source_name in set(only_sources)
+        ]
+    else:
+        sources_selectionnees = list(sources_disponibles)
+
+    if skip_sources:
+        sources_ignorees = set(skip_sources)
+        sources_selectionnees = [
+            source_name
+            for source_name in sources_selectionnees
+            if source_name not in sources_ignorees
+        ]
+
+    if not sources_selectionnees:
+        raise ValueError(
+            "Aucune source selectionnee. Verifie `--only-source` et `--skip-source`."
+        )
+
+    return sources_selectionnees
+
+
+def importer_fonction_collecte(source_name: str) -> Any:
+    """Importer a la demande la fonction de collecte d'une source."""
+
+    module_basename, function_name = SOURCE_IMPORT_SPECS[source_name]
+    module_name = f"{construire_nom_package_sources()}.{module_basename}"
+
+    try:
+        module = import_module(module_name)
+    except ImportError as error:
+        raise ImportError(
+            "Impossible d'importer le module de collecte pour la source "
+            f"'{source_name}' ({module_name})."
+        ) from error
+
+    try:
+        return getattr(module, function_name)
+    except AttributeError as error:
+        raise ImportError(
+            f"Le module '{module_name}' ne definit pas la fonction '{function_name}'."
+        ) from error
 
 
 def charger_variables_environnement() -> None:
@@ -262,10 +330,13 @@ def collecter_toutes_les_sources(
     demo_mode: bool = False,
     save_raw_output: bool = True,
     save_per_source: bool = False,
-    query_wttj: str = "data engineer",
+    query_wttj: list[str] | None = None,
+    wttj_query_mode: str | None = None,
     days_back_postgresql: int = 30,
     france_travail_query_mode: str | None = None,
     france_travail_max_pages: int | None = None,
+    only_sources: list[str] | None = None,
+    skip_sources: list[str] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """Collecter toutes les sources prevues par le projet.
 
@@ -289,46 +360,14 @@ def collecter_toutes_les_sources(
     Ce que cette fonction peut aussi faire :
     - sauvegarder un JSON brut global ;
     - sauvegarder un JSON par source si on active l'option correspondante.
+    - isoler une ou plusieurs sources pour faciliter les tests.
     """
 
     charger_variables_environnement()
-
-    france_travail_client_id = os.getenv("FRANCE_TRAVAIL_CLIENT_ID", "")
-    france_travail_client_secret = os.getenv("FRANCE_TRAVAIL_CLIENT_SECRET", "")
-    france_travail_scope = os.getenv(
-        "FRANCE_TRAVAIL_SCOPE",
-        DEFAULT_FRANCE_TRAVAIL_SCOPE,
+    sources_selectionnees = normaliser_sources_selectionnees(
+        only_sources=only_sources,
+        skip_sources=skip_sources,
     )
-    france_travail_max_results = int(
-        os.getenv(
-            "FRANCE_TRAVAIL_MAX_RESULTS",
-            str(DEFAULT_FRANCE_TRAVAIL_MAX_RESULTS),
-        )
-    )
-    france_travail_timeout_seconds = int(
-        os.getenv(
-            "FRANCE_TRAVAIL_TIMEOUT_SECONDS",
-            str(DEFAULT_FRANCE_TRAVAIL_TIMEOUT_SECONDS),
-        )
-    )
-    france_travail_query_mode = (
-        france_travail_query_mode
-        or os.getenv(
-            "FRANCE_TRAVAIL_QUERY_MODE",
-            DEFAULT_FRANCE_TRAVAIL_QUERY_MODE,
-        )
-    )
-    if france_travail_max_pages is None:
-        france_travail_max_pages = lire_entier_positif_ou_aucune_limite(
-            os.getenv(
-                "FRANCE_TRAVAIL_MAX_PAGES",
-                str(DEFAULT_FRANCE_TRAVAIL_MAX_PAGES),
-            ),
-            default=DEFAULT_FRANCE_TRAVAIL_MAX_PAGES,
-        )
-    database_url = os.getenv("DATABASE_URL", "")
-    hive_host = os.getenv("HIVE_HOST", "localhost")
-    hive_port = int(os.getenv("HIVE_PORT", "10000"))
 
     # On rend ces choix explicites ici pour que le lecteur comprenne tout de
     # suite la strategie retenue par l'orchestrateur :
@@ -339,33 +378,109 @@ def collecter_toutes_les_sources(
     use_postgresql_demo_seed = demo_mode
     use_hive_fallback = demo_mode
 
-    payloads_par_source: dict[str, list[dict[str, Any]]] = {
-        SOURCE_KEYS["france_travail"]: collect_offres_france_travail(
+    if len(sources_selectionnees) != len(SOURCE_IMPORT_SPECS):
+        print(
+            "Sources selectionnees : "
+            + ", ".join(sources_selectionnees)
+        )
+
+    payloads_par_source: dict[str, list[dict[str, Any]]] = {}
+
+    if SOURCE_KEYS["france_travail"] in sources_selectionnees:
+        collect_offres_france_travail = importer_fonction_collecte(
+            SOURCE_KEYS["france_travail"]
+        )
+        france_travail_client_id = os.getenv("FRANCE_TRAVAIL_CLIENT_ID", "")
+        france_travail_client_secret = os.getenv("FRANCE_TRAVAIL_CLIENT_SECRET", "")
+        france_travail_scope = os.getenv(
+            "FRANCE_TRAVAIL_SCOPE",
+            DEFAULT_FRANCE_TRAVAIL_SCOPE,
+        )
+        france_travail_max_results = int(
+            os.getenv(
+                "FRANCE_TRAVAIL_MAX_RESULTS",
+                str(DEFAULT_FRANCE_TRAVAIL_MAX_RESULTS),
+            )
+        )
+        france_travail_timeout_seconds = int(
+            os.getenv(
+                "FRANCE_TRAVAIL_TIMEOUT_SECONDS",
+                str(DEFAULT_FRANCE_TRAVAIL_TIMEOUT_SECONDS),
+            )
+        )
+        france_travail_query_mode_effectif = (
+            france_travail_query_mode
+            or os.getenv(
+                "FRANCE_TRAVAIL_QUERY_MODE",
+                DEFAULT_FRANCE_TRAVAIL_QUERY_MODE,
+            )
+        )
+        france_travail_max_pages_effectif = france_travail_max_pages
+        if france_travail_max_pages_effectif is None:
+            france_travail_max_pages_effectif = lire_entier_positif_ou_aucune_limite(
+                os.getenv(
+                    "FRANCE_TRAVAIL_MAX_PAGES",
+                    str(DEFAULT_FRANCE_TRAVAIL_MAX_PAGES),
+                ),
+                default=DEFAULT_FRANCE_TRAVAIL_MAX_PAGES,
+            )
+        payloads_par_source[SOURCE_KEYS["france_travail"]] = collect_offres_france_travail(
             client_id=france_travail_client_id,
             client_secret=france_travail_client_secret,
             max_results=france_travail_max_results,
-            max_pages=france_travail_max_pages,
+            max_pages=france_travail_max_pages_effectif,
             timeout_seconds=france_travail_timeout_seconds,
             scope=france_travail_scope,
-            query_mode=france_travail_query_mode,
+            query_mode=france_travail_query_mode_effectif,
             use_fallback_if_unavailable=demo_mode,
-        ),
-        SOURCE_KEYS["welcome_to_the_jungle"]: collect_offres_welcome_to_the_jungle(
-            query=query_wttj,
-            use_fallback=use_wttj_fallback,
-        ),
-        SOURCE_KEYS["rome_reference"]: collect_reference_rome(),
-        SOURCE_KEYS["postgresql_history"]: collect_offres_postgresql_history(
+        )
+
+    if SOURCE_KEYS["welcome_to_the_jungle"] in sources_selectionnees:
+        collect_offres_welcome_to_the_jungle = importer_fonction_collecte(
+            SOURCE_KEYS["welcome_to_the_jungle"]
+        )
+        wttj_query_mode_effectif = (
+            wttj_query_mode
+            or os.getenv("WTTJ_QUERY_MODE", DEFAULT_WTTJ_QUERY_MODE)
+        )
+        payloads_par_source[SOURCE_KEYS["welcome_to_the_jungle"]] = (
+            collect_offres_welcome_to_the_jungle(
+                queries=query_wttj,
+                query_mode=wttj_query_mode_effectif,
+                use_fallback=use_wttj_fallback,
+            )
+        )
+
+    if SOURCE_KEYS["rome_reference"] in sources_selectionnees:
+        collect_reference_rome = importer_fonction_collecte(
+            SOURCE_KEYS["rome_reference"]
+        )
+        payloads_par_source[SOURCE_KEYS["rome_reference"]] = collect_reference_rome()
+
+    if SOURCE_KEYS["postgresql_history"] in sources_selectionnees:
+        collect_offres_postgresql_history = importer_fonction_collecte(
+            SOURCE_KEYS["postgresql_history"]
+        )
+        database_url = os.getenv("DATABASE_URL", "")
+        payloads_par_source[SOURCE_KEYS["postgresql_history"]] = (
+            collect_offres_postgresql_history(
             database_url=database_url,
             days_back=days_back_postgresql,
             use_demo_seed=use_postgresql_demo_seed,
-        ),
-        SOURCE_KEYS["hive_aggregates"]: collect_aggregates_hive(
+            )
+        )
+
+    if SOURCE_KEYS["hive_aggregates"] in sources_selectionnees:
+        collect_aggregates_hive = importer_fonction_collecte(
+            SOURCE_KEYS["hive_aggregates"]
+        )
+        hive_host = os.getenv("HIVE_HOST", "localhost")
+        hive_port = int(os.getenv("HIVE_PORT", "10000"))
+        payloads_par_source[SOURCE_KEYS["hive_aggregates"]] = collect_aggregates_hive(
             host=hive_host,
             port=hive_port,
             use_fallback=use_hive_fallback,
-        ),
-    }
+        )
 
     afficher_resume_collecte(payloads_par_source)
 
@@ -388,6 +503,7 @@ def collecter_toutes_les_sources(
 def build_argument_parser() -> argparse.ArgumentParser:
     """Construire le parseur CLI de la phase de collecte."""
 
+    source_choices = list(SOURCE_IMPORT_SPECS.keys())
     parser = argparse.ArgumentParser(
         description="Orchestre la collecte multi-sources du projet JobRadar IA.",
     )
@@ -408,8 +524,39 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--query-wttj",
-        default="data engineer",
-        help="Requete a utiliser pour Welcome to the Jungle.",
+        action="append",
+        default=None,
+        help=(
+            "Requete WTTJ a lancer. Peut etre repetee pour enchainer "
+            "plusieurs intitules de poste."
+        ),
+    )
+    parser.add_argument(
+        "--wttj-query-mode",
+        choices=["legacy", "focused", "broad", "max_volume"],
+        default=None,
+        help=(
+            "Strategie de requetes WTTJ. Ignoree si `--query-wttj` est fourni. "
+            "`focused` est le bon mode par defaut pour enchainer plusieurs intitules data/IA."
+        ),
+    )
+    parser.add_argument(
+        "--only-source",
+        action="append",
+        choices=source_choices,
+        help=(
+            "Limiter le run a une source precise. "
+            "Peut etre repete pour lancer plusieurs sources choisies."
+        ),
+    )
+    parser.add_argument(
+        "--skip-source",
+        action="append",
+        choices=source_choices,
+        help=(
+            "Ignorer une source precise sans modifier le code. "
+            "Peut etre repete."
+        ),
     )
     parser.add_argument(
         "--days-back-postgresql",
@@ -447,20 +594,26 @@ def main() -> None:
     parser = build_argument_parser()
     args = parser.parse_args()
 
-    collecter_toutes_les_sources(
-        demo_mode=args.demo,
-        save_raw_output=not args.no_save,
-        save_per_source=args.save_per_source,
-        query_wttj=args.query_wttj,
-        days_back_postgresql=args.days_back_postgresql,
-        france_travail_query_mode=args.france_travail_query_mode,
-        france_travail_max_pages=lire_entier_positif_ou_aucune_limite(
-            str(args.france_travail_max_pages)
-            if args.france_travail_max_pages is not None
-            else None,
-            default=None,
-        ),
-    )
+    try:
+        collecter_toutes_les_sources(
+            demo_mode=args.demo,
+            save_raw_output=not args.no_save,
+            save_per_source=args.save_per_source,
+            query_wttj=args.query_wttj,
+            wttj_query_mode=args.wttj_query_mode,
+            days_back_postgresql=args.days_back_postgresql,
+            france_travail_query_mode=args.france_travail_query_mode,
+            france_travail_max_pages=lire_entier_positif_ou_aucune_limite(
+                str(args.france_travail_max_pages)
+                if args.france_travail_max_pages is not None
+                else None,
+                default=None,
+            ),
+            only_sources=args.only_source,
+            skip_sources=args.skip_source,
+        )
+    except ValueError as error:
+        parser.error(str(error))
 
 
 if __name__ == "__main__":
