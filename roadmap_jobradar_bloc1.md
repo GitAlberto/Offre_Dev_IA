@@ -1,101 +1,139 @@
-# Roadmap — JobRadar IA
-## Pipeline de données sur les offres d'emploi en Intelligence Artificielle
-### Bloc 1 — Compétences C1 à C5
+﻿# Roadmap â€” JobRadar IA
+## Pipeline de donnÃ©es sur les offres d'emploi en Intelligence Artificielle
+### Bloc 1 â€” CompÃ©tences C1 Ã  C5
 
 ---
 
-## Architecture du dépôt Git
+## Architecture du dÃ©pÃ´t Git
 
 ```
 jobrador-ia/
-│
-├── docs/                          # Documentation — C4, C5
-│   ├── merise/
-│   │   ├── MCD.png                # Modèle Conceptuel des Données (draw.io)
-│   │   └── MPD.png                # Modèle Physique des Données
-│   ├── rgpd_registre.md           # Registre des traitements RGPD
-│   ├── installation.md            # Procédure d'installation complète
-│   ├── api_doc.md                 # Documentation endpoints API
-│   └── matrice_preuves.md         # Tableau C1→C5 / preuve / fichier Git / slide
-│
-├── data/
-│   ├── raw/                       # Données brutes collectées (ignorées par Git)
-│   │   └── raw_YYYYMMDD_HHMMSS.json
-│   ├── processed/                 # Dataset nettoyé final (ignoré par Git)
-│   │   └── clean_dataset.csv
-│   └── fallback/                  # Données statiques de secours — OBLIGATOIRE
-│       ├── fallback_wttj.csv      # 100 offres Welcome to the Jungle
-│       ├── rome_codes.csv         # Nomenclature ROME officielle
-│       └── hive_agregats.csv      # Agrégats simulés si Hive offline
-│
-├── src/                           # Code source principal
-│   │
-│   ├── collect/                   # C1 — Extraction multi-sources
-│   │   ├── __init__.py
-│   │   ├── collect.py             # Point d'entrée — orchestre les 5 sources
-│   │   └── sources/
-│   │       ├── __init__.py
-│   │       ├── france_travail.py  # Source 1 : API REST France Travail
-│   │       ├── wttj_scraper.py    # Source 2 : Scraping Welcome to the Jungle
-│   │       ├── rome_csv.py        # Source 3 : Fichier CSV ROME data.gouv.fr
-│   │       ├── pg_history.py      # Source 4 : PostgreSQL historique
-│   │       └── hive_agregats.py   # Source 5 : Big Data Hive
-│   │
-│   ├── aggregate/                 # C3 — Nettoyage et normalisation
-│   │   ├── __init__.py
-│   │   └── aggregate.py           # Fusion, nettoyage, normalisation
-│   │
-│   └── pipeline.py                # Lance la chaîne complète en 1 commande
-│
-├── database/                      # C4 — Base de données
-│   ├── models.py                  # Schéma SQLAlchemy
-│   ├── import_data.py             # Script d'import du dataset nettoyé
-│   └── migrations/
-│       ├── 001_init.sql           # Création des tables
-│       └── 002_seed_references.sql # Données de référence (régions, types contrat)
-│
-├── queries/                       # C2 — Requêtes SQL documentées
-│   ├── extraction.sql             # Requêtes PostgreSQL (3 minimum)
-│   └── extraction_hive.hql        # Requêtes HiveQL (2 minimum)
-│
-├── api/                           # C5 — API REST
-│   ├── __init__.py
-│   ├── main.py                    # Application FastAPI
-│   ├── auth.py                    # JWT authentication
-│   ├── schemas.py                 # Modèles Pydantic
-│   └── routes/
-│       ├── __init__.py
-│       ├── offres.py              # GET /offres avec filtres
-│       └── stats.py               # GET /stats/competences, salaires, tendances
-│
-├── tests/                         # Tests d'intégration API
-│   ├── __init__.py
-│   └── test_api.py                # Tests pytest tous les endpoints
-│
-├── reports/                       # Captures pour la soutenance
-│   ├── captures/
-│   │   ├── c1_terminal_collect.png
-│   │   ├── c2_requetes_sql.png
-│   │   ├── c3_avant_apres_nettoyage.png
-│   │   ├── c4_merise_bdd.png
-│   │   └── c5_swagger_api.png
-│   └── phrases_defense.md         # 1 phrase de défense par compétence
-│
-├── .env.example                   # Variables d'environnement (template)
-├── .gitignore
-├── docker-compose.yml             # PostgreSQL + Hive
-├── requirements.txt
-└── README.md
+â”‚
+â”œâ”€â”€ docs/                          # Documentation â€” C4, C5
+â”‚   â”œâ”€â”€ merise/
+â”‚   â”‚   â”œâ”€â”€ MCD.png                # ModÃ¨le Conceptuel des DonnÃ©es (draw.io)
+â”‚   â”‚   â””â”€â”€ MPD.png                # ModÃ¨le Physique des DonnÃ©es
+â”‚   â”œâ”€â”€ rgpd_registre.md           # Registre des traitements RGPD
+â”‚   â”œâ”€â”€ installation.md            # ProcÃ©dure d'installation complÃ¨te
+â”‚   â”œâ”€â”€ api_doc.md                 # Documentation endpoints API
+â”‚   â””â”€â”€ matrice_preuves.md         # Tableau C1â†’C5 / preuve / fichier Git / slide
+â”‚
+â”œâ”€â”€ data/
+â”‚   â”œâ”€â”€ raw/                       # DonnÃ©es brutes collectÃ©es (ignorÃ©es par Git)
+â”‚   â”‚   â””â”€â”€ raw_YYYYMMDD_HHMMSS.json
+â”‚   â”œâ”€â”€ processed/                 # Dataset nettoyÃ© final (ignorÃ© par Git)
+â”‚   â”‚   â””â”€â”€ clean_dataset.csv
+â”‚   â””â”€â”€ fallback/                  # DonnÃ©es statiques de secours â€” OBLIGATOIRE
+â”‚       â”œâ”€â”€ fallback_wttj.csv      # 100 offres Welcome to the Jungle
+â”‚       â”œâ”€â”€ rome_codes.csv         # Nomenclature ROME officielle
+â”‚       â””â”€â”€ hive_agregats.csv      # AgrÃ©gats simulÃ©s si Hive offline
+â”‚
+â”œâ”€â”€ src/                           # Code source principal
+â”‚   â”‚
+â”‚   â”œâ”€â”€ collect/                   # C1 â€” Extraction multi-sources
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ collect.py             # Point d'entrÃ©e â€” orchestre les 5 sources
+â”‚   â”‚   â””â”€â”€ fonctions/
+â”‚   â”‚       â”œâ”€â”€ __init__.py
+â”‚   â”‚       â”œâ”€â”€ collect_offres_france_travail.py  # Source 1 : API REST France Travail
+â”‚   â”‚       â”œâ”€â”€ collect_offres_welcome_to_the_jungle.py    # Source 2 : Scraping Welcome to the Jungle
+â”‚   â”‚       â”œâ”€â”€ collect_reference_rome.py        # Source 3 : Fichier CSV ROME data.gouv.fr
+â”‚   â”‚       â”œâ”€â”€ collect_offres_postgresql_history.py      # Source 4 : PostgreSQL historique
+â”‚   â”‚       â””â”€â”€ collect_aggregates_hive.py   # Source 5 : Big Data Hive
+â”‚   â”‚
+â”‚   â”œâ”€â”€ transform/                 # C3 â€” Nettoyage, normalisation, agrÃ©gation
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ nettoyage/
+â”‚   â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”‚   â”œâ”€â”€ etape_1_filtrage.py       # Retire les lignes brutes invalides
+â”‚   â”‚   â”‚   â”œâ”€â”€ etape_2_normalisation.py   # Harmonise dates, salaires, compÃ©tences
+â”‚   â”‚   â”‚   â””â”€â”€ etape_3_deduplication.py   # Supprime les doublons entre sources
+â”‚   â”‚   â””â”€â”€ aggregate/
+â”‚   â”‚       â”œâ”€â”€ __init__.py
+â”‚   â”‚       â””â”€â”€ aggregate.py       # Construit le dataset final consolidÃ©
+â”‚   â”‚
+â”‚   â””â”€â”€ pipeline.py                # Lance la chaÃ®ne complÃ¨te en 1 commande
+â”‚
+â”œâ”€â”€ database/                      # C4 â€” Base de donnÃ©es
+â”‚   â”œâ”€â”€ models.py                  # SchÃ©ma SQLAlchemy
+â”‚   â”œâ”€â”€ import_data.py             # Script d'import du dataset nettoyÃ©
+â”‚   â””â”€â”€ migrations/
+â”‚       â”œâ”€â”€ 001_init.sql           # CrÃ©ation des tables
+â”‚       â””â”€â”€ 002_seed_references.sql # DonnÃ©es de rÃ©fÃ©rence (rÃ©gions, types contrat)
+â”‚
+â”œâ”€â”€ queries/                       # C2 â€” RequÃªtes SQL documentÃ©es
+â”‚   â”œâ”€â”€ extraction.sql             # RequÃªtes PostgreSQL (3 minimum)
+â”‚   â””â”€â”€ extraction_hive.hql        # RequÃªtes HiveQL (2 minimum)
+â”‚
+â”œâ”€â”€ api/                           # C5 â€” API REST
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ main.py                    # Application FastAPI
+â”‚   â”œâ”€â”€ auth.py                    # JWT authentication
+â”‚   â”œâ”€â”€ schemas.py                 # ModÃ¨les Pydantic
+â”‚   â””â”€â”€ routes/
+â”‚       â”œâ”€â”€ __init__.py
+â”‚       â”œâ”€â”€ offres.py              # GET /offres avec filtres
+â”‚       â””â”€â”€ stats.py               # GET /stats/competences, salaires, tendances
+â”‚
+â”œâ”€â”€ tests/                         # Tests d'intÃ©gration API
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â””â”€â”€ test_api.py                # Tests pytest tous les endpoints
+â”‚
+â”œâ”€â”€ reports/                       # Captures pour la soutenance
+â”‚   â”œâ”€â”€ captures/
+â”‚   â”‚   â”œâ”€â”€ c1_terminal_collect.png
+â”‚   â”‚   â”œâ”€â”€ c2_requetes_sql.png
+â”‚   â”‚   â”œâ”€â”€ c3_avant_apres_nettoyage.png
+â”‚   â”‚   â”œâ”€â”€ c4_merise_bdd.png
+â”‚   â”‚   â””â”€â”€ c5_swagger_api.png
+â”‚   â””â”€â”€ phrases_defense.md         # 1 phrase de dÃ©fense par compÃ©tence
+â”‚
+â”œâ”€â”€ .env.example                   # Variables d'environnement (template)
+â”œâ”€â”€ .gitignore
+â”œâ”€â”€ docker-compose.yml             # PostgreSQL + Hive
+â”œâ”€â”€ requirements.txt
+â””â”€â”€ README.md
 ```
 
 ---
+
+## Mise a jour architecture C3
+
+La structure actuellement retenue pour la competence C3 remplace l'ancienne
+idee trop floue basee uniquement sur `src/aggregate/`.
+
+La nouvelle organisation est :
+
+```text
+src/transform/
+  __init__.py
+  nettoyage/
+    __init__.py
+    etape_1_filtrage.py
+    etape_2_normalisation.py
+    etape_3_deduplication.py
+  aggregate/
+    __init__.py
+    aggregate.py
+```
+
+Repartition des roles :
+- `nettoyage/etape_1_filtrage.py` : retire les lignes brutes invalides ou inutilisables
+- `nettoyage/etape_2_normalisation.py` : harmonise les dates, salaires, competences et champs utiles
+- `nettoyage/etape_3_deduplication.py` : retire les doublons entre sources comparables
+- `aggregate/aggregate.py` : orchestre toute la transformation et construit le dataset final
+
+Convention actuelle pour C3 :
+- chemin de reference du code C3 : `src/transform/`
+- point d'entree d'agregation : `src/transform/aggregate/aggregate.py`
+- sortie finale attendue : `data/processed/clean_dataset.csv`
 
 ## Stack technique
 
 ```
 Langage         : Python 3.11
 API Framework   : FastAPI + Uvicorn
-Base de données : PostgreSQL 15
+Base de donnÃ©es : PostgreSQL 15
 Big Data        : Apache Hive 3 (Docker)
 ORM             : SQLAlchemy
 Auth            : JWT (python-jose)
@@ -141,7 +179,7 @@ volumes:
 ## Variables d'environnement
 
 ```bash
-# .env.example — copier vers .env et remplir
+# .env.example â€” copier vers .env et remplir
 
 # PostgreSQL
 PG_HOST=localhost
@@ -160,39 +198,39 @@ HIVE_PORT=10000
 FRANCE_TRAVAIL_CLIENT_ID=
 FRANCE_TRAVAIL_CLIENT_SECRET=
 
-# API sécurité
+# API sÃ©curitÃ©
 SECRET_KEY=change-me-32-chars-minimum
 ```
 
 ---
 
-## Modèle de données — MCD Merise
+## ModÃ¨le de donnÃ©es â€” MCD Merise
 
 ```
-Entités et relations :
+EntitÃ©s et relations :
 
 OFFRE (id, titre, description, date_publication,
        salaire_min, salaire_max, type_contrat, statut, source)
     |
-    ├── publiée-par ──→ ENTREPRISE (id, nom, secteur, taille)
+    â”œâ”€â”€ publiÃ©e-par â”€â”€â†’ ENTREPRISE (id, nom, secteur, taille)
     |
-    ├── localisée-dans ──→ LOCALISATION (id, ville, departement,
+    â”œâ”€â”€ localisÃ©e-dans â”€â”€â†’ LOCALISATION (id, ville, departement,
     |                                    region, code_postal)
     |
-    └── requiert ──→ COMPETENCE (id, nom, categorie)
+    â””â”€â”€ requiert â”€â”€â†’ COMPETENCE (id, nom, categorie)
                      [table liaison OFFRE_COMPETENCE]
 ```
 
 ### Ce que tu dessines dans draw.io
-- Rectangles = entités
+- Rectangles = entitÃ©s
 - Ovales = attributs
 - Losanges = relations
-- Cardinalités : une OFFRE requiert 0..n COMPETENCES
-                 une COMPETENCE apparaît dans 0..n OFFRES
+- CardinalitÃ©s : une OFFRE requiert 0..n COMPETENCES
+                 une COMPETENCE apparaÃ®t dans 0..n OFFRES
 
 ---
 
-## MPD PostgreSQL — Tables SQL
+## MPD PostgreSQL â€” Tables SQL
 
 ```sql
 -- database/migrations/001_init.sql
@@ -239,7 +277,7 @@ CREATE TABLE offres_competences (
     PRIMARY KEY (offre_id, competence_id)
 );
 
--- Index pour les performances des requêtes fréquentes
+-- Index pour les performances des requÃªtes frÃ©quentes
 CREATE INDEX idx_offres_date       ON offres(date_publication);
 CREATE INDEX idx_offres_contrat    ON offres(type_contrat);
 CREATE INDEX idx_offres_source     ON offres(source);
@@ -248,126 +286,126 @@ CREATE INDEX idx_comp_nom          ON competences(nom);
 
 ---
 
-## Les 5 sources — Ce que chaque fichier fait
+## Les 5 sources â€” Ce que chaque fichier fait
 
-### Source 1 : src/collect/sources/france_travail.py
+### Source 1 : src/collect/fonctions/collect_offres_france_travail.py
 ```
-Rôle    : Appel API REST France Travail
-Données : offres d'emploi structurées avec salaires
+RÃ´le    : Appel API REST France Travail
+DonnÃ©es : offres d'emploi structurÃ©es avec salaires
 URL     : https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search
-Auth    : OAuth2 client_credentials (token renouvelé automatiquement)
-Paramètres clés :
+Auth    : OAuth2 client_credentials (token renouvelÃ© automatiquement)
+ParamÃ¨tres clÃ©s :
   - motsCles = "intelligence artificielle" OR "data engineer"
   - typeContrat = "E1" (alternance) ou vide (tout)
   - departement = optionnel
-Retourne : list[dict] normalisés
+Retourne : list[dict] normalisÃ©s
 Fallback : liste vide + log ERROR (l'API est fiable, pas besoin de CSV)
 ```
 
-### Source 2 : src/collect/sources/wttj_scraper.py
+### Source 2 : src/collect/fonctions/collect_offres_welcome_to_the_jungle.py
 ```
-Rôle    : Scraping Welcome to the Jungle
-Données : offres startups avec stack technique détaillée
+RÃ´le    : Scraping Welcome to the Jungle
+DonnÃ©es : offres startups avec stack technique dÃ©taillÃ©e
 URL     : https://www.welcometothejungle.com/fr/jobs?query=data+engineer
-Méthode : requests + BeautifulSoup, sélecteurs CSS sur les cards d'offres
-Fallback : data/fallback/fallback_wttj.csv — 100 offres statiques
-           OBLIGATOIRE pour la démo hors internet
+MÃ©thode : requests + BeautifulSoup, sÃ©lecteurs CSS sur les cards d'offres
+Fallback : data/fallback/fallback_wttj.csv â€” 100 offres statiques
+           OBLIGATOIRE pour la dÃ©mo hors internet
 ```
 
-### Source 3 : src/collect/sources/rome_csv.py
+### Source 3 : src/collect/fonctions/collect_reference_rome.py
 ```
-Rôle    : Lecture fichier CSV ROME
-Données : nomenclature officielle des métiers (codes, familles, compétences)
+RÃ´le    : Lecture fichier CSV ROME
+DonnÃ©es : nomenclature officielle des mÃ©tiers (codes, familles, compÃ©tences)
 Fichier : data/fallback/rome_codes.csv
-          Téléchargeable sur : https://www.data.gouv.fr/fr/datasets/
+          TÃ©lÃ©chargeable sur : https://www.data.gouv.fr/fr/datasets/
           fichier-rome-des-metiers/
-Utilité : enrichir les offres avec la catégorie officielle du métier
+UtilitÃ© : enrichir les offres avec la catÃ©gorie officielle du mÃ©tier
 ```
 
-### Source 4 : src/collect/sources/pg_history.py
+### Source 4 : src/collect/fonctions/collect_offres_postgresql_history.py
 ```
-Rôle    : Extraction depuis PostgreSQL
-Données : offres collectées lors des runs précédents
-Requête : SELECT * FROM offres WHERE date_publication >= NOW() - INTERVAL '30 days'
-Utilité : éviter de recollecter des offres déjà connues (déduplication)
-Fallback : si table vide (premier run), créer 20 entrées de démonstration
+RÃ´le    : Extraction depuis PostgreSQL
+DonnÃ©es : offres collectÃ©es lors des runs prÃ©cÃ©dents
+RequÃªte : SELECT * FROM offres WHERE date_publication >= NOW() - INTERVAL '30 days'
+UtilitÃ© : Ã©viter de recollecter des offres dÃ©jÃ  connues (dÃ©duplication)
+Fallback : si table vide (premier run), crÃ©er 20 entrÃ©es de dÃ©monstration
 ```
 
-### Source 5 : src/collect/sources/hive_agregats.py
+### Source 5 : src/collect/fonctions/collect_aggregates_hive.py
 ```
-Rôle    : Extraction Big Data Hive
-Données : agrégats pré-calculés (top compétences, volumes par région)
-Requête : SELECT competence, COUNT(*) as nb, region
+RÃ´le    : Extraction Big Data Hive
+DonnÃ©es : agrÃ©gats prÃ©-calculÃ©s (top compÃ©tences, volumes par rÃ©gion)
+RequÃªte : SELECT competence, COUNT(*) as nb, region
           FROM offres_historique
           GROUP BY competence, region
 Fallback : data/fallback/hive_agregats.csv si Hive offline
-           Ce CSV contient des données pré-calculées réalistes
+           Ce CSV contient des donnÃ©es prÃ©-calculÃ©es rÃ©alistes
 ```
 
 ---
 
-## Flux de données — Ce qui se passe quand tu lances pipeline.py
+## Flux de donnÃ©es â€” Ce qui se passe quand tu lances pipeline.py
 
 ```
 python src/pipeline.py
 
-    ÉTAPE 1 — Collecte [C1]
-    ┌─────────────────────────────────────┐
-    │ france_travail.py  → 200 offres     │
-    │ wttj_scraper.py    → 80 offres      │
-    │ rome_csv.py        → 500 codes ROME │
-    │ pg_history.py      → 150 offres     │
-    │ hive_agregats.py   → 50 agrégats    │
-    │                                     │
-    │ → Sauvegarde : data/raw/raw_XXX.json│
-    └─────────────────────────────────────┘
-                    ↓
-    ÉTAPE 2 — Nettoyage [C3]
-    ┌─────────────────────────────────────┐
-    │ Suppression des doublons (même URL) │
-    │ Normalisation des salaires → entier │
-    │ Normalisation des dates → ISO 8601  │
-    │ Normalisation des compétences       │
-    │ Suppression des offres corrompues   │
-    │                                     │
-    │ → Sauvegarde : data/processed/      │
-    │   clean_dataset.csv                 │
-    │   Avant : 980 entrées               │
-    │   Après  : 743 entrées propres      │
-    └─────────────────────────────────────┘
-                    ↓
-    ÉTAPE 3 — Import base [C4]
-    ┌─────────────────────────────────────┐
-    │ Lecture clean_dataset.csv           │
-    │ INSERT INTO offres ...              │
-    │ INSERT INTO competences ...         │
-    │ INSERT INTO offres_competences ...  │
-    │                                     │
-    │ → PostgreSQL : 743 offres insérées  │
-    │   Résultat : 12 tables peuplées     │
-    └─────────────────────────────────────┘
-                    ↓
-    ÉTAPE 4 — API disponible [C5]
-    ┌─────────────────────────────────────┐
-    │ uvicorn api.main:app --port 8000    │
-    │                                     │
-    │ GET /offres?type_contrat=alternance │
-    │ GET /stats/competences              │
-    │ GET /stats/salaires?region=idf      │
-    │ Documentation : /docs (Swagger)     │
-    └─────────────────────────────────────┘
+    Ã‰TAPE 1 â€” Collecte [C1]
+    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+    â”‚ collect_offres_france_travail.py  â†’ 200 offres     â”‚
+    â”‚ collect_offres_welcome_to_the_jungle.py    â†’ 80 offres      â”‚
+    â”‚ collect_reference_rome.py        â†’ 500 codes ROME â”‚
+    â”‚ collect_offres_postgresql_history.py      â†’ 150 offres     â”‚
+    â”‚ collect_aggregates_hive.py   â†’ 50 agrÃ©gats    â”‚
+    â”‚                                     â”‚
+    â”‚ â†’ Sauvegarde : data/raw/raw_XXX.jsonâ”‚
+    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                    â†“
+    Ã‰TAPE 2 â€” Nettoyage [C3]
+    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+    â”‚ Suppression des doublons (mÃªme URL) â”‚
+    â”‚ Normalisation des salaires â†’ entier â”‚
+    â”‚ Normalisation des dates â†’ ISO 8601  â”‚
+    â”‚ Normalisation des compÃ©tences       â”‚
+    â”‚ Suppression des offres corrompues   â”‚
+    â”‚                                     â”‚
+    â”‚ â†’ Sauvegarde : data/processed/      â”‚
+    â”‚   clean_dataset.csv                 â”‚
+    â”‚   Avant : 980 entrÃ©es               â”‚
+    â”‚   AprÃ¨s  : 743 entrÃ©es propres      â”‚
+    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                    â†“
+    Ã‰TAPE 3 â€” Import base [C4]
+    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+    â”‚ Lecture clean_dataset.csv           â”‚
+    â”‚ INSERT INTO offres ...              â”‚
+    â”‚ INSERT INTO competences ...         â”‚
+    â”‚ INSERT INTO offres_competences ...  â”‚
+    â”‚                                     â”‚
+    â”‚ â†’ PostgreSQL : 743 offres insÃ©rÃ©es  â”‚
+    â”‚   RÃ©sultat : 12 tables peuplÃ©es     â”‚
+    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                    â†“
+    Ã‰TAPE 4 â€” API disponible [C5]
+    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+    â”‚ uvicorn api.main:app --port 8000    â”‚
+    â”‚                                     â”‚
+    â”‚ GET /offres?type_contrat=alternance â”‚
+    â”‚ GET /stats/competences              â”‚
+    â”‚ GET /stats/salaires?region=idf      â”‚
+    â”‚ Documentation : /docs (Swagger)     â”‚
+    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
 
-## Requêtes SQL — Ce que chaque requête prouve [C2]
+## RequÃªtes SQL â€” Ce que chaque requÃªte prouve [C2]
 
 ```sql
 -- queries/extraction.sql
 
--- REQUÊTE 1 : Top compétences demandées en alternance
--- Objectif : identifier les skills les plus recherchés
--- Jointures : offres → offres_competences → competences
+-- REQUÃŠTE 1 : Top compÃ©tences demandÃ©es en alternance
+-- Objectif : identifier les skills les plus recherchÃ©s
+-- Jointures : offres â†’ offres_competences â†’ competences
 -- Filtre : type_contrat alternance, 90 derniers jours
 -- Optimisation : INDEX sur type_contrat et date_publication
 
@@ -385,10 +423,10 @@ GROUP BY c.nom, c.categorie
 ORDER BY nb_offres DESC
 LIMIT 20;
 
--- REQUÊTE 2 : Salaires médians par région
+-- REQUÃŠTE 2 : Salaires mÃ©dians par rÃ©gion
 -- Objectif : cartographie salariale nationale
--- Filtre : offres avec salaire renseigné uniquement
--- Optimisation : NULLIF pour éviter les salaires à 0
+-- Filtre : offres avec salaire renseignÃ© uniquement
+-- Optimisation : NULLIF pour Ã©viter les salaires Ã  0
 
 SELECT
     l.region,
@@ -404,9 +442,9 @@ WHERE o.salaire_min IS NOT NULL
 GROUP BY l.region
 ORDER BY salaire_median DESC;
 
--- REQUÊTE 3 : Évolution hebdomadaire des offres sur 12 semaines
--- Objectif : détecter les tendances du marché
--- Optimisation : DATE_TRUNC évite un GROUP BY par jour (trop granulaire)
+-- REQUÃŠTE 3 : Ã‰volution hebdomadaire des offres sur 12 semaines
+-- Objectif : dÃ©tecter les tendances du marchÃ©
+-- Optimisation : DATE_TRUNC Ã©vite un GROUP BY par jour (trop granulaire)
 
 SELECT
     DATE_TRUNC('week', date_publication)  AS semaine,
@@ -420,144 +458,144 @@ ORDER BY semaine ASC, type_contrat;
 
 ---
 
-## Endpoints API — Ce que chaque route expose [C5]
+## Endpoints API â€” Ce que chaque route expose [C5]
 
 ```
 POST  /token
-      → Authentification, retourne JWT
-      → Proof C5 : auth obligatoire
+      â†’ Authentification, retourne JWT
+      â†’ Proof C5 : auth obligatoire
 
 GET   /offres
-      → Paramètres : competence, region, type_contrat, date_debut, date_fin
-      → Retourne : list[OffreOut]
-      → Auth : Bearer JWT requis
+      â†’ ParamÃ¨tres : competence, region, type_contrat, date_debut, date_fin
+      â†’ Retourne : list[OffreOut]
+      â†’ Auth : Bearer JWT requis
 
 GET   /offres/{id}
-      → Détail d'une offre avec ses compétences
-      → Auth : Bearer JWT requis
+      â†’ DÃ©tail d'une offre avec ses compÃ©tences
+      â†’ Auth : Bearer JWT requis
 
 GET   /stats/competences
-      → Top 20 compétences + nb offres + salaire moyen
-      → Auth : Bearer JWT requis
+      â†’ Top 20 compÃ©tences + nb offres + salaire moyen
+      â†’ Auth : Bearer JWT requis
 
 GET   /stats/salaires
-      → Salaires médians par région et type de contrat
-      → Auth : Bearer JWT requis
+      â†’ Salaires mÃ©dians par rÃ©gion et type de contrat
+      â†’ Auth : Bearer JWT requis
 
 GET   /stats/tendances
-      → Évolution hebdomadaire sur 12 semaines
-      → Auth : Bearer JWT requis
+      â†’ Ã‰volution hebdomadaire sur 12 semaines
+      â†’ Auth : Bearer JWT requis
 
 GET   /health
-      → Santé de l'API — PAS d'auth (monitoring)
+      â†’ SantÃ© de l'API â€” PAS d'auth (monitoring)
 ```
 
 ---
 
-## Matrice de preuves — À remplir au fur et à mesure
+## Matrice de preuves â€” Ã€ remplir au fur et Ã  mesure
 
 ```markdown
 # docs/matrice_preuves.md
 
-| Compétence | Ce que j'ai fait | Fichier Git | Preuve visuelle | Slide |
+| CompÃ©tence | Ce que j'ai fait | Fichier Git | Preuve visuelle | Slide |
 |---|---|---|---|---|
-| C1 | Extraction depuis 5 sources hétérogènes | src/collect/ | capture terminal collect.py | 4 |
-| C2 | 3 requêtes SQL documentées avec justifications | queries/extraction.sql | capture résultat requête | 5 |
-| C3 | Nettoyage : 980 → 743 entrées, normalisation salaires/dates/skills | src/aggregate/ | tableau avant/après | 6 |
-| C4 | MCD+MPD Merise, PostgreSQL, import, registre RGPD | database/ + docs/merise/ | schéma MCD + pgAdmin | 7 |
+| C1 | Extraction depuis 5 sources hÃ©tÃ©rogÃ¨nes | src/collect/ | capture terminal collect.py | 4 |
+| C2 | 3 requÃªtes SQL documentÃ©es avec justifications | queries/extraction.sql | capture rÃ©sultat requÃªte | 5 |
+| C3 | Nettoyage : 980 â†’ 743 entrÃ©es, normalisation salaires/dates/skills | src/transform/ | tableau avant/aprÃ¨s | 6 |
+| C4 | MCD+MPD Merise, PostgreSQL, import, registre RGPD | database/ + docs/merise/ | schÃ©ma MCD + pgAdmin | 7 |
 | C5 | API FastAPI, JWT, OpenAPI, 6 endpoints, tests pytest verts | api/ + tests/ | capture Swagger + pytest | 8 |
 ```
 
 ---
 
-## Phrases de défense — À apprendre avant la soutenance
+## Phrases de dÃ©fense â€” Ã€ apprendre avant la soutenance
 
 ```markdown
 # reports/phrases_defense.md
 
 C1 :
 "Ce script prouve que j'automatise la collecte depuis 5 sources
-hétérogènes — API REST, scraping, fichier CSV, base de données
-et système big data — avec gestion des erreurs et fallback,
-conformément au critère C1."
+hÃ©tÃ©rogÃ¨nes â€” API REST, scraping, fichier CSV, base de donnÃ©es
+et systÃ¨me big data â€” avec gestion des erreurs et fallback,
+conformÃ©ment au critÃ¨re C1."
 
 C2 :
-"Ces 3 requêtes SQL documentées extraient les données analytiques
-clés : top compétences, salaires médians par région, tendances
-hebdomadaires. Chaque jointure et filtre est justifié en commentaire,
-conformément au critère C2."
+"Ces 3 requÃªtes SQL documentÃ©es extraient les donnÃ©es analytiques
+clÃ©s : top compÃ©tences, salaires mÃ©dians par rÃ©gion, tendances
+hebdomadaires. Chaque jointure et filtre est justifiÃ© en commentaire,
+conformÃ©ment au critÃ¨re C2."
 
 C3 :
-"Le script d'agrégation fusionne les 5 sources, supprime les 237
-entrées corrompues, normalise les formats de dates, salaires et
-compétences pour produire un dataset homogène de 743 offres,
-conformément au critère C3."
+"Le script d'agrÃ©gation fusionne les 5 sources, supprime les 237
+entrÃ©es corrompues, normalise les formats de dates, salaires et
+compÃ©tences pour produire un dataset homogÃ¨ne de 743 offres,
+conformÃ©ment au critÃ¨re C3."
 
 C4 :
-"La base PostgreSQL est modélisée selon la méthode Merise (MCD + MPD),
-conforme au RGPD avec un registre des traitements rédigé. Le script
-d'import insère les données sans erreur, conformément au critère C4."
+"La base PostgreSQL est modÃ©lisÃ©e selon la mÃ©thode Merise (MCD + MPD),
+conforme au RGPD avec un registre des traitements rÃ©digÃ©. Le script
+d'import insÃ¨re les donnÃ©es sans erreur, conformÃ©ment au critÃ¨re C4."
 
 C5 :
-"L'API REST FastAPI expose les données via 6 endpoints sécurisés
-par JWT, documentés OpenAPI et couverts par 8 tests pytest qui
-passent tous au vert, conformément au critère C5."
+"L'API REST FastAPI expose les donnÃ©es via 6 endpoints sÃ©curisÃ©s
+par JWT, documentÃ©s OpenAPI et couverts par 8 tests pytest qui
+passent tous au vert, conformÃ©ment au critÃ¨re C5."
 ```
 
 ---
 
-## Checklist — Avant de dire que le projet est terminé
+## Checklist â€” Avant de dire que le projet est terminÃ©
 
 ### Code
-- [ ] `docker compose up -d` démarre sans erreur
-- [ ] `psql` exécute `001_init.sql` sans erreur
+- [ ] `docker compose up -d` dÃ©marre sans erreur
+- [ ] `psql` exÃ©cute `001_init.sql` sans erreur
 - [ ] `python src/collect/collect.py` collecte depuis les 5 sources
 - [ ] `python src/collect/collect.py --demo` fonctionne HORS INTERNET
-- [ ] `python src/aggregate/aggregate.py` produit `clean_dataset.csv`
-- [ ] `python database/import_data.py` insère sans erreur
-- [ ] `uvicorn api.main:app` démarre sur port 8000
+- [ ] `python src/transform/aggregate/aggregate.py` produit `clean_dataset.csv`
+- [ ] `python database/import_data.py` insÃ¨re sans erreur
+- [ ] `uvicorn api.main:app` dÃ©marre sur port 8000
 - [ ] `http://localhost:8000/docs` affiche Swagger complet
 - [ ] `pytest tests/ -v` tous les tests passent au vert
 
 ### Documentation
-- [ ] MCD dessiné dans draw.io, exporté en PNG dans `docs/merise/`
-- [ ] MPD SQL commenté dans `001_init.sql`
-- [ ] `docs/rgpd_registre.md` rédigé avec procédures de tri
+- [ ] MCD dessinÃ© dans draw.io, exportÃ© en PNG dans `docs/merise/`
+- [ ] MPD SQL commentÃ© dans `001_init.sql`
+- [ ] `docs/rgpd_registre.md` rÃ©digÃ© avec procÃ©dures de tri
 - [ ] `docs/installation.md` reproductible par quelqu'un d'autre
-- [ ] `docs/matrice_preuves.md` complété pour C1 à C5
+- [ ] `docs/matrice_preuves.md` complÃ©tÃ© pour C1 Ã  C5
 
 ### Soutenance
 - [ ] 5 captures PNG dans `reports/captures/`
-- [ ] `reports/phrases_defense.md` rédigé
-- [ ] Démo testée entièrement hors internet avec `--demo`
+- [ ] `reports/phrases_defense.md` rÃ©digÃ©
+- [ ] DÃ©mo testÃ©e entiÃ¨rement hors internet avec `--demo`
 - [ ] Tu peux expliquer chaque fonction de chaque fichier en 1 phrase
 
 ---
 
-## Ordre de construction recommandé
+## Ordre de construction recommandÃ©
 
 ```
 JOUR 1
-  1. Créer le dépôt Git + structure des dossiers
+  1. CrÃ©er le dÃ©pÃ´t Git + structure des dossiers
   2. docker-compose.yml + docker compose up -d
-  3. 001_init.sql → créer les tables
-  4. .env à partir de .env.example
-  5. Inscription France Travail API (faire ça en premier car délai)
-  6. Écrire rome_csv.py + pg_history.py (les plus simples)
-  7. Tester chaque source isolément
+  3. 001_init.sql â†’ crÃ©er les tables
+  4. .env Ã  partir de .env.example
+  5. Inscription France Travail API (faire Ã§a en premier car dÃ©lai)
+  6. Ã‰crire collect_reference_rome.py + collect_offres_postgresql_history.py (les plus simples)
+  7. Tester chaque source isolÃ©ment
 
 JOUR 2
-  8. france_travail.py (API REST)
-  9. wttj_scraper.py (scraping)
-  10. hive_agregats.py (big data)
-  11. collect.py (point d'entrée, orchestration des 5)
-  12. Vérifier que raw_XXX.json est produit
+  8. collect_offres_france_travail.py (API REST)
+  9. collect_offres_welcome_to_the_jungle.py (scraping)
+  10. collect_aggregates_hive.py (big data)
+  11. collect.py (point d'entrÃ©e, orchestration des 5)
+  12. VÃ©rifier que raw_XXX.json est produit
 
 JOUR 3
-  13. aggregate.py (nettoyage complet)
+  13. etape_1_filtrage.py + etape_2_normalisation.py + etape_3_deduplication.py + aggregate.py
   14. import_data.py (insertion PostgreSQL)
-  15. queries/extraction.sql (3 requêtes documentées)
-  16. pipeline.py (chaîne complète en 1 commande)
+  15. queries/extraction.sql (3 requÃªtes documentÃ©es)
+  16. pipeline.py (chaÃ®ne complÃ¨te en 1 commande)
 
 JOUR 4
   17. api/auth.py + api/schemas.py
@@ -567,11 +605,12 @@ JOUR 4
   21. tests/test_api.py
 
 JOUR 5
-  22. MCD + MPD dans draw.io → export PNG
+  22. MCD + MPD dans draw.io â†’ export PNG
   23. docs/rgpd_registre.md
   24. docs/matrice_preuves.md
-  25. reports/captures/ → prendre toutes les captures
+  25. reports/captures/ â†’ prendre toutes les captures
   26. reports/phrases_defense.md
   27. README.md
-  28. Test démo complète hors internet
+  28. Test dÃ©mo complÃ¨te hors internet
 ```
+
