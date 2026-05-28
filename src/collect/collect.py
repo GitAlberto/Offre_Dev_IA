@@ -51,11 +51,14 @@ DEFAULT_FRANCE_TRAVAIL_MAX_PAGES = 20
 DEFAULT_FRANCE_TRAVAIL_QUERY_MODE = "broad"
 DEFAULT_FRANCE_TRAVAIL_TIMEOUT_SECONDS = 30
 DEFAULT_WTTJ_QUERY_MODE = "focused"
+DEFAULT_BPCE_CSV_PATH = "data/source_csv/bpce.csv"
+DEFAULT_REGION_ILE_DE_FRANCE_CSV_PATH = "data/source_csv/region_ile_de_france.csv"
 
 SOURCE_KEYS = {
     "france_travail": "france_travail",
     "welcome_to_the_jungle": "welcome_to_the_jungle",
-    "rome_reference": "rome_reference",
+    "bpce": "bpce",
+    "region_ile_de_france": "region_ile_de_france",
     "postgresql_history": "postgresql_history",
     "hive_aggregates": "hive_aggregates",
 }
@@ -68,9 +71,13 @@ SOURCE_IMPORT_SPECS = {
         "collect_offres_welcome_to_the_jungle",
         "collect_offres_welcome_to_the_jungle",
     ),
-    SOURCE_KEYS["rome_reference"]: (
-        "collect_reference_rome",
-        "collect_reference_rome",
+    SOURCE_KEYS["bpce"]: (
+        "collect_offres_bpce",
+        "collect_offres_bpce",
+    ),
+    SOURCE_KEYS["region_ile_de_france"]: (
+        "collect_offres_region_ile_de_france",
+        "collect_offres_region_ile_de_france",
     ),
     SOURCE_KEYS["postgresql_history"]: (
         "collect_offres_postgresql_history",
@@ -332,6 +339,8 @@ def collecter_toutes_les_sources(
     save_per_source: bool = False,
     query_wttj: list[str] | None = None,
     wttj_query_mode: str | None = None,
+    bpce_csv_path: str | None = None,
+    region_ile_de_france_csv_path: str | None = None,
     days_back_postgresql: int = 30,
     france_travail_query_mode: str | None = None,
     france_travail_max_pages: int | None = None,
@@ -345,9 +354,10 @@ def collecter_toutes_les_sources(
     Ordre d'appel retenu :
     1. France Travail
     2. Welcome to the Jungle
-    3. ROME
-    4. PostgreSQL historique
-    5. Hive aggregates
+    3. BPCE
+    4. Region Ile-de-France
+    5. PostgreSQL historique
+    6. Hive aggregates
 
     Pourquoi cet ordre :
     - il reste proche de la roadmap du projet ;
@@ -451,11 +461,39 @@ def collecter_toutes_les_sources(
             )
         )
 
-    if SOURCE_KEYS["rome_reference"] in sources_selectionnees:
-        collect_reference_rome = importer_fonction_collecte(
-            SOURCE_KEYS["rome_reference"]
+    if SOURCE_KEYS["bpce"] in sources_selectionnees:
+        collect_offres_bpce = importer_fonction_collecte(
+            SOURCE_KEYS["bpce"]
         )
-        payloads_par_source[SOURCE_KEYS["rome_reference"]] = collect_reference_rome()
+        bpce_csv_path_effectif = (
+            bpce_csv_path
+            or os.getenv(
+                "BPCE_CSV_PATH",
+                DEFAULT_BPCE_CSV_PATH,
+            )
+        )
+        payloads_par_source[SOURCE_KEYS["bpce"]] = (
+            collect_offres_bpce(
+                csv_path=bpce_csv_path_effectif,
+            )
+        )
+
+    if SOURCE_KEYS["region_ile_de_france"] in sources_selectionnees:
+        collect_offres_region_ile_de_france = importer_fonction_collecte(
+            SOURCE_KEYS["region_ile_de_france"]
+        )
+        region_ile_de_france_csv_path_effectif = (
+            region_ile_de_france_csv_path
+            or os.getenv(
+                "REGION_ILE_DE_FRANCE_CSV_PATH",
+                DEFAULT_REGION_ILE_DE_FRANCE_CSV_PATH,
+            )
+        )
+        payloads_par_source[SOURCE_KEYS["region_ile_de_france"]] = (
+            collect_offres_region_ile_de_france(
+                csv_path=region_ile_de_france_csv_path_effectif,
+            )
+        )
 
     if SOURCE_KEYS["postgresql_history"] in sources_selectionnees:
         collect_offres_postgresql_history = importer_fonction_collecte(
@@ -541,6 +579,24 @@ def build_argument_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--bpce-csv-path",
+        default=None,
+        help=(
+            "Chemin du CSV BPCE. "
+            "Si non fourni, le collecteur cherche "
+            "`data/source_csv/bpce.csv` puis le CSV BPCE le plus recent du dossier."
+        ),
+    )
+    parser.add_argument(
+        "--region-ile-de-france-csv-path",
+        default=None,
+        help=(
+            "Chemin du CSV Region Ile-de-France. "
+            "Si non fourni, le collecteur cherche "
+            "`data/source_csv/region_ile_de_france.csv` puis le CSV IDF le plus recent du dossier."
+        ),
+    )
+    parser.add_argument(
         "--only-source",
         action="append",
         choices=source_choices,
@@ -601,6 +657,8 @@ def main() -> None:
             save_per_source=args.save_per_source,
             query_wttj=args.query_wttj,
             wttj_query_mode=args.wttj_query_mode,
+            bpce_csv_path=args.bpce_csv_path,
+            region_ile_de_france_csv_path=args.region_ile_de_france_csv_path,
             days_back_postgresql=args.days_back_postgresql,
             france_travail_query_mode=args.france_travail_query_mode,
             france_travail_max_pages=lire_entier_positif_ou_aucune_limite(

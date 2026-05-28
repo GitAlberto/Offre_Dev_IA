@@ -33,7 +33,9 @@ from ..nettoyage.etape_3_deduplication import dedoublonner_offres_normalisees
 DEFAULT_PROCESSED_OUTPUT_PATH = Path("data/processed/clean_dataset.csv")
 
 OFFER_SOURCE_NAMES = {
+    "bpce",
     "france_travail",
+    "region_ile_de_france",
     "welcome_to_the_jungle",
     "postgresql_history",
 }
@@ -46,7 +48,6 @@ def aplatir_sources_offres(
 
     Pourquoi cette fonction existe :
     - toutes les sources ne representent pas le meme objet metier ;
-    - `collect_reference_rome` renvoie un referentiel ;
     - `collect_aggregates_hive` renvoie des agregats ;
     - seules certaines sources doivent alimenter le dataset final des offres.
 

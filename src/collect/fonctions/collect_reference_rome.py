@@ -1,4 +1,4 @@
-"""Module de collecte du referentiel ROME au format CSV.
+"""Module historique autour du referentiel ROME au format CSV.
 
 Ce module a pour responsabilites :
 - lire le fichier local de referentiel ROME en CSV ;
@@ -6,9 +6,8 @@ Ce module a pour responsabilites :
 - exposer un point d'entree clair dedie a cette nomenclature officielle.
 
 Ce qui est cense appeler ce module :
-- `src/collect/collect.py` doit appeler `collect_reference_rome()` ;
-- cette source peut aussi etre appelee par des tests isoles car elle ne depend
-  pas du reseau quand le fichier CSV est disponible localement.
+- ce module n'est plus branche dans l'orchestrateur principal ;
+- il reste disponible seulement comme piste de travail ou de test isole.
 
 Ce que ce module est cense appeler en interne :
 - un helper de resolution de chemin ;
@@ -64,7 +63,7 @@ def collect_reference_rome(
     """Point d'entree principal pour la source ROME en CSV.
 
     Appelant attendu :
-    - `src/collect/collect.py`.
+    - des tests isoles eventuels si cette piste est reprise plus tard.
 
     Appels internes que cette fonction est censee faire :
     1. `resolve_rome_csv_path()`
@@ -76,7 +75,9 @@ def collect_reference_rome(
     - un dictionnaire par ligne du fichier ROME.
 
     Comportement actuel :
-    - retourne une liste vide tant que le vrai parsing CSV n'est pas implemente.
+    - retourne une liste vide ;
+    - la collecte principale du projet privilegie desormais des sources
+      d'offres d'emploi plutot qu'un referentiel.
     """
 
     resolved_path = resolve_rome_csv_path(csv_path=csv_path)
