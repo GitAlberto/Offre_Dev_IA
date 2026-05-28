@@ -24,8 +24,9 @@ Chaque fichier de ce dossier doit :
 
 - `collect_offres_france_travail.py`
 - `collect_offres_welcome_to_the_jungle.py`
+- `collect_offres_bpce.py`
+- `collect_offres_region_ile_de_france.py`
 - `collect_offres_postgresql_history.py`
-- `collect_reference_rome.py`
 - `collect_aggregates_hive.py`
 
 ## Convention de nommage
@@ -50,7 +51,15 @@ Dans l'etat actuel du projet :
   reponses quand les identifiants sont disponibles ;
 - il sait aussi utiliser un secours local en mode demo si on ajoute plus tard
   un fichier `data/fallback/fallback_france_travail.json` ou `.csv` ;
-- les autres sources sont encore au stade squelette documente.
+- `collect_offres_welcome_to_the_jungle.py` sait scraper des pages metier WTTJ
+  avec Selenium ;
+- `collect_offres_bpce.py` sait telecharger puis lire le CSV officiel riche
+  des offres Groupe BPCE ;
+- `collect_offres_region_ile_de_france.py` sait telecharger puis lire le CSV
+  officiel des offres de la Region Ile-de-France ;
+- `collect_offres_choisir_service_public.py` reste disponible comme source CSV
+  secondaire plus volumineuse mais moins detaillee ;
+- PostgreSQL et Hive restent encore au stade squelette documente.
 
 ## Flux prevu
 

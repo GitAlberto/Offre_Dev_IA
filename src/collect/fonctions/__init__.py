@@ -13,12 +13,16 @@ from typing import Any
 
 EXPORTS_PAR_MODULE = {
     "collect_aggregates_hive": "collect_aggregates_hive",
+    "collect_offres_bpce": "collect_offres_bpce",
+    "collect_offres_choisir_service_public": (
+        "collect_offres_choisir_service_public"
+    ),
     "collect_offres_france_travail": "collect_offres_france_travail",
     "collect_offres_postgresql_history": "collect_offres_postgresql_history",
+    "collect_offres_region_ile_de_france": "collect_offres_region_ile_de_france",
     "collect_offres_welcome_to_the_jungle": (
         "collect_offres_welcome_to_the_jungle"
     ),
-    "collect_reference_rome": "collect_reference_rome",
 }
 
 __all__ = list(EXPORTS_PAR_MODULE)

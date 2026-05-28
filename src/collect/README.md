@@ -25,7 +25,12 @@ precisement ce role d'orchestrateur.
 Premier niveau de concret :
 - la source `France Travail` est maintenant la premiere source avec un vrai
   connecteur HTTP exploitable ;
-- les autres sources conservent encore un role de squelette documente en
+- la source `Welcome to the Jungle` fonctionne maintenant en scraping Selenium ;
+- la source `BPCE` est maintenant la source CSV principale du projet ;
+- la source `Region Ile-de-France` s'ajoute comme deuxieme vraie source CSV ;
+- le collecteur `Choisir le Service Public` reste disponible en complement si
+  l'on veut reutiliser une source publique plus volumineuse mais moins riche ;
+- PostgreSQL et Hive conservent encore un role de squelette documente en
   attendant leur implementation progressive.
 
 ## Ou retrouver la sortie de la collecte
@@ -50,7 +55,8 @@ Exemple de structure retournee :
 {
     "france_travail": [...],
     "welcome_to_the_jungle": [...],
-    "rome_reference": [...],
+    "bpce": [...],
+    "region_ile_de_france": [...],
     "postgresql_history": [...],
     "hive_aggregates": [...],
 }
@@ -82,6 +88,11 @@ Options deja prevues :
 - `--no-save` : n'ecrit pas le JSON brut global ;
 - `--save-per-source` : ecrit aussi un fichier brut distinct par source ;
 - `--query-wttj` : permet de changer la requete Welcome to the Jungle ;
+- `--wttj-query-mode` : choisit une strategie de requetes WTTJ ;
+- `--bpce-csv-path` : force le chemin du fichier CSV BPCE ;
+- `--region-ile-de-france-csv-path` : force le chemin du fichier CSV Region Ile-de-France ;
+- `--only-source` : isole une ou plusieurs sources sans commenter du code ;
+- `--skip-source` : ignore une source sans toucher a l'orchestrateur ;
 - `--days-back-postgresql` : regle la profondeur de lecture de l'historique.
 - `--france-travail-query-mode` : choisit la strategie de volume France Travail
   (`legacy`, `focused`, `broad`, `max_volume`) ;
@@ -96,6 +107,13 @@ Variables d'environnement deja utilisees par la collecte :
 - `FRANCE_TRAVAIL_MAX_RESULTS`
 - `FRANCE_TRAVAIL_MAX_PAGES`
 - `FRANCE_TRAVAIL_TIMEOUT_SECONDS`
+- `WTTJ_QUERY_MODE`
+- `WTTJ_MAX_PAGES`
+- `WTTJ_TIMEOUT_SECONDS`
+- `WTTJ_PREFLIGHT_TIMEOUT_SECONDS`
+- `WTTJ_CHROME_BINARY`
+- `BPCE_CSV_PATH`
+- `REGION_ILE_DE_FRANCE_CSV_PATH`
 - `DATABASE_URL`
 - `HIVE_HOST`
 - `HIVE_PORT`
