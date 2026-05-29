@@ -99,9 +99,16 @@ def lire_fallback_hive(
 def executer_requete_hive_via_beeline(
     query: str,
     database: str = DEFAULT_HIVE_DATABASE,
+    auth: str = DEFAULT_HIVE_AUTH,
     container_name: str = DEFAULT_HIVE_BEELINE_CONTAINER,
 ) -> list[dict[str, Any]]:
     """Executer une requete Hive via `beeline` dans le conteneur Docker."""
+
+    jdbc_url = f"jdbc:hive2://localhost:10000/{database}"
+    auth_normalisee = str(auth or "").strip().lower()
+    if auth_normalisee in {"nosasl", "none"}:
+        jdbc_url += ";auth=none"
+    query_compactee = " ".join(query.split())
 
     command = [
         "docker",
@@ -111,10 +118,12 @@ def executer_requete_hive_via_beeline(
         "--silent=true",
         "--showHeader=true",
         "--outputformat=tsv2",
+        "-n",
+        "hive",
         "-u",
-        f"jdbc:hive2://localhost:10000/{database}",
+        jdbc_url,
         "-e",
-        query,
+        query_compactee,
     ]
     completed = subprocess.run(
         command,
@@ -186,7 +195,10 @@ def collect_aggregates_hive(
     5. un CSV de secours optionnel si Hive est indisponible pendant une demonstration
 
     Comportement actuel :
-    - retourne une liste vide tant que le projet est encore en phase de squelette.
+    - tente d'abord une lecture directe via `PyHive` ;
+    - bascule automatiquement sur `beeline` dans Docker si la connexion Python
+      a HiveServer2 echoue ;
+    - peut enfin relire un CSV de secours en mode demonstration.
     """
 
     query = build_hive_aggregate_query()
@@ -215,6 +227,7 @@ def collect_aggregates_hive(
             lignes_beeline = executer_requete_hive_via_beeline(
                 query=query,
                 database=database,
+                auth=auth,
                 container_name=beeline_container,
             )
         except Exception as beeline_exc:  # pragma: no cover - depend de Docker

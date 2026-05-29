@@ -44,9 +44,7 @@ DEFAULT_DATABASE_URL = "postgresql://admin:secret@localhost:5433/jobradar"
 OFFER_SOURCE_NAMES = {
     "adzuna",
     "bpce",
-    "choisir_service_public",
     "france_travail",
-    "la_bonne_alternance",
     "region_ile_de_france",
     "welcome_to_the_jungle",
 }

@@ -1,68 +1,32 @@
 # Dossier `src/collect`
 
-Ce dossier regroupe la phase de collecte des donnees.
+Cette couche orchestre la collecte brute multi-sources.
 
-Il contient deja :
-- `src/collect/collect.py`, point d'entree de la collecte multi-sources ;
-- la logique d'orchestration des sources ;
-- les appels aux fonctions source-specifiques de `src/collect/fonctions/`.
+## Sources retenues
 
-## Role attendu
+- `france_travail` : API France Travail
+- `welcome_to_the_jungle` : scraping Selenium
+- `bpce` : CSV principal
+- `region_ile_de_france` : second CSV retenu
+- `postgresql_history` : source base de donnees, relue depuis PostgreSQL
+- `hive_aggregates` : source Big Data, relue depuis Hive
 
-Ce dossier pilotera la collecte mais ne devra pas contenir toute la logique
-technique de chaque source.
+Important :
+- `Adzuna` sert a remplir PostgreSQL, mais ne fait pas partie du run par defaut
+  de `collect.py`
+- `Hive` sert des agregats et n'alimente pas directement le dataset final
+  d'offres
 
-Le principe retenu est le suivant :
-- `src/collect/collect.py` orchestrera la collecte ;
-- il appellera les fonctions detaillees dans `src/collect/fonctions/` ;
-- chaque module de `src/collect/fonctions/` sera responsable d'une seule source ;
-- `src/transform/nettoyage/` prendra ensuite le relais pour nettoyer ;
-- `src/transform/aggregate/aggregate.py` assemblera enfin le dataset final.
+## Structure retournee
 
-Dans l'etat actuel du projet, `src/collect/collect.py` existe deja et joue
-precisement ce role d'orchestrateur.
+L'orchestrateur renvoie un `dict[str, list[dict]]` avec une cle par source.
 
-Premier niveau de concret :
-- la source `France Travail` est maintenant la premiere source avec un vrai
-  connecteur HTTP exploitable ;
-- la source `Welcome to the Jungle` fonctionne maintenant en scraping Selenium ;
-- la source `La bonne alternance` ajoute un gros flux officiel d'offres
-  d'alternance via export JSON sur jeton ;
-- la source `BPCE` est maintenant la source CSV principale du projet ;
-- la source `Region Ile-de-France` s'ajoute comme deuxieme vraie source CSV ;
-- le collecteur `Choisir le Service Public` reste disponible en complement si
-  l'on veut reutiliser une source publique plus volumineuse mais moins riche ;
-- PostgreSQL sait maintenant recevoir puis relire les offres stockees ;
-- Hive conserve encore un role de squelette documente en attendant son
-  implementation progressive.
-
-Pour simuler la source PostgreSQL a partir d'une vraie source amont,
-`La bonne alternance` peut maintenant servir a remplir directement la table
-`offres` via `database/alimenter_postgresql_depuis_lba.py`.
-
-## Ou retrouver la sortie de la collecte
-
-Ce dossier correspond au niveau orchestrateur. Il ne decrit pas une source
-unique, mais la collecte globale une fois les fonctions de `src/collect/fonctions/`
-appelees.
-
-### Sortie immediate de l'orchestrateur
-
-Le fichier `src/collect/collect.py` recupere les retours de chaque fonction de
-collecte puis produit une structure consolidee en memoire.
-
-Cette sortie immediate est :
-- un `dict[str, list[dict]]` ;
-- avec une cle par source ;
-- puis transmise a la suite du pipeline.
-
-Exemple de structure retournee :
+Exemple :
 
 ```python
 {
     "france_travail": [...],
     "welcome_to_the_jungle": [...],
-    "la_bonne_alternance": [...],
     "bpce": [...],
     "region_ile_de_france": [...],
     "postgresql_history": [...],
@@ -70,47 +34,46 @@ Exemple de structure retournee :
 }
 ```
 
-### Sortie ecrite sur disque
+## Sorties sur disque
 
-Si la collecte est sauvegardee apres orchestration, il faudra retrouver cette
-sortie dans :
-- `data/raw/`
-
-Convention recommandee :
 - sortie brute globale : `data/raw/raw_YYYYMMDD_HHMMSS.json`
 - sortie brute par source : `data/raw/<nom_source>_YYYYMMDD_HHMMSS.json`
 
-Exemples :
-- `data/raw/raw_20260526_221500.json`
-- `data/raw/france_travail_20260526_221500.json`
-- `data/raw/postgresql_history_20260526_221500.json`
+## Commandes utiles
 
-## Comment lancer l'orchestrateur
+Run global :
 
-Le point d'entree actuel est :
-- `python src/collect/collect.py`
+```powershell
+python src/collect/collect.py
+```
 
-Options deja prevues :
-- `--demo` : active le mode demonstration pour les sources qui prevoient un
-  secours local ;
-- `--no-save` : n'ecrit pas le JSON brut global ;
-- `--save-per-source` : ecrit aussi un fichier brut distinct par source ;
-- `--query-wttj` : permet de changer la requete Welcome to the Jungle ;
-- `--wttj-query-mode` : choisit une strategie de requetes WTTJ ;
-- `--lba-only-direct-offers` : ne garde sur LBA que les offres deposees
-  directement sur la plateforme ;
-- `--lba-disable-keyword-filter` : desactive le filtrage data/IA/BI/cloud sur LBA ;
-- `--bpce-csv-path` : force le chemin du fichier CSV BPCE ;
-- `--region-ile-de-france-csv-path` : force le chemin du fichier CSV Region Ile-de-France ;
-- `--only-source` : isole une ou plusieurs sources sans commenter du code ;
-- `--skip-source` : ignore une source sans toucher a l'orchestrateur ;
-- `--days-back-postgresql` : regle la profondeur de lecture de l'historique.
-- `--france-travail-query-mode` : choisit la strategie de volume France Travail
-  (`legacy`, `focused`, `broad`, `max_volume`) ;
-- `--france-travail-max-pages` : limite ou non le nombre de pages lues par groupe
-  de mots-cles France Travail.
+Tests isoles :
 
-Variables d'environnement deja utilisees par la collecte :
+```powershell
+python src/collect/collect.py --only-source welcome_to_the_jungle
+python src/collect/collect.py --only-source bpce
+python src/collect/collect.py --only-source region_ile_de_france
+python src/collect/collect.py --only-source postgresql_history --no-save
+python src/collect/collect.py --only-source hive_aggregates --no-save
+```
+
+## Options principales
+
+- `--demo`
+- `--no-save`
+- `--save-per-source`
+- `--query-wttj`
+- `--wttj-query-mode`
+- `--bpce-csv-path`
+- `--region-ile-de-france-csv-path`
+- `--only-source`
+- `--skip-source`
+- `--days-back-postgresql`
+- `--france-travail-query-mode`
+- `--france-travail-max-pages`
+
+## Variables d'environnement utiles
+
 - `FRANCE_TRAVAIL_CLIENT_ID`
 - `FRANCE_TRAVAIL_CLIENT_SECRET`
 - `FRANCE_TRAVAIL_SCOPE`
@@ -118,11 +81,6 @@ Variables d'environnement deja utilisees par la collecte :
 - `FRANCE_TRAVAIL_MAX_RESULTS`
 - `FRANCE_TRAVAIL_MAX_PAGES`
 - `FRANCE_TRAVAIL_TIMEOUT_SECONDS`
-- `LBA_API_KEY`
-- `LBA_TIMEOUT_SECONDS`
-- `LBA_ONLY_DIRECT_OFFERS`
-- `LBA_ENABLE_KEYWORD_FILTER`
-- `LBA_INCLUDE_RECRUITER_OPPORTUNITIES`
 - `WTTJ_QUERY_MODE`
 - `WTTJ_MAX_PAGES`
 - `WTTJ_TIMEOUT_SECONDS`
@@ -136,33 +94,3 @@ Variables d'environnement deja utilisees par la collecte :
 - `HIVE_DATABASE`
 - `HIVE_AUTH`
 - `HIVE_BEELINE_CONTAINER`
-
-### Apres la collecte
-
-Une fois la collecte terminee, `src/collect/` ne doit pas produire a lui seul
-le jeu de donnees final nettoye.
-
-La sortie normalisee finale est attendue dans :
-- `data/processed/clean_dataset.csv`
-
-Cette etape releve ensuite de `src/transform/aggregate/aggregate.py`,
-qui s'appuiera lui-meme sur les modules de `src/transform/nettoyage/`.
-
-## Strategie France Travail
-
-Les modes disponibles n'ont pas le meme objectif :
-- `legacy` : reproduit la requete historique initiale.
-- `focused` : plusieurs familles de recherche encore assez strictes.
-- `broad` : bon compromis volume / pertinence pour rester centre sur data / IA.
-- `max_volume` : ajoute des termes plus larges comme `python`, `sql`, `tableau`
-  ou `power bi` pour viser plusieurs milliers de lignes brutes, au prix d'un
-  bruit metier plus fort a nettoyer ensuite.
-
-Le mode `max_volume` integre aussi des groupes metier plus riches :
-- data engineering ;
-- IA / machine learning ;
-- data science / BI ;
-- architecture / cloud data ;
-- titres de postes frequents en entreprise francaise ;
-- outils / stack ;
-- une passe dediee alternance via `typeContrat=E1`.

@@ -1,78 +1,185 @@
-"""Etape 3 de deduplication des offres normalisees.
-
-Ce module intervient apres la normalisation, une fois que plusieurs sources
-partagent deja un schema plus comparable.
-
-Pourquoi ce fichier s'appelle `etape_3_deduplication.py` :
-- il arrive apres le filtrage et la normalisation ;
-- il a besoin d'un schema deja harmonise pour comparer les offres ;
-- il clot la phase `nettoyage/` avant l'agregation finale.
-
-Ce qu'il est cense faire plus tard :
-- comparer des offres proches entre sources ;
-- eliminer les doublons evidents ;
-- conserver une seule occurrence de reference lorsqu'une offre existe dans
-  plusieurs systemes.
-
-Ce qui est cense l'appeler :
-- `src/transform/aggregate/aggregate.py`, juste avant la constitution du
-  dataset final.
-
-Ce que ce module n'est pas cense faire :
-- nettoyer les lignes brutes ;
-- normaliser les formats ;
-- ecrire le fichier CSV final.
-"""
+"""Etape 3 : deduplication experte avec fusion des doublons."""
 
 from __future__ import annotations
 
 from typing import Any
 
+from .utils import (
+    choisir_meilleur_texte,
+    construire_blocs_deduplication,
+    fusionner_competences,
+    nettoyer_texte,
+    sont_doublons,
+)
+
 
 def construire_cle_deduplication(offre_normalisee: dict[str, Any]) -> tuple[Any, ...]:
-    """Construire une cle simple de deduplication pour une offre.
-
-    A ce stade, la cle reste volontairement conservative.
-
-    Plus tard, elle pourra etre enrichie avec :
-    - l'URL de l'offre ;
-    - un identifiant externe ;
-    - un titre normalise ;
-    - le nom d'entreprise harmonise ;
-    - la date de publication normalisee.
-    """
+    """Construire une cle simple de debug pour une offre normalisee."""
 
     return (
-        offre_normalisee.get("external_id"),
-        offre_normalisee.get("title"),
-        offre_normalisee.get("company"),
-        offre_normalisee.get("published_at"),
+        offre_normalisee.get("url_canonical"),
+        offre_normalisee.get("title_signature"),
+        offre_normalisee.get("company_signature"),
+        offre_normalisee.get("published_date"),
     )
+
+
+def fusionner_offres_doublons(
+    offre_reference: dict[str, Any],
+    doublon: dict[str, Any],
+) -> None:
+    """Fusionner un doublon dans l'offre de reference sans perdre d'information utile."""
+
+    offre_reference["duplicate_count"] = int(offre_reference.get("duplicate_count") or 1) + 1
+
+    sources = list(offre_reference.get("duplicate_sources") or [offre_reference.get("source")])
+    if doublon.get("source") and doublon["source"] not in sources:
+        sources.append(doublon["source"])
+    offre_reference["duplicate_sources"] = sources
+
+    origin_sources = list(
+        offre_reference.get("duplicate_origin_sources")
+        or [offre_reference.get("origin_source") or offre_reference.get("source")]
+    )
+    doublon_origin = doublon.get("origin_source") or doublon.get("source")
+    if doublon_origin and doublon_origin not in origin_sources:
+        origin_sources.append(doublon_origin)
+    offre_reference["duplicate_origin_sources"] = origin_sources
+
+    external_ids = list(
+        offre_reference.get("duplicate_external_ids")
+        or [offre_reference.get("external_id")]
+    )
+    if doublon.get("external_id") and doublon["external_id"] not in external_ids:
+        external_ids.append(doublon["external_id"])
+    offre_reference["duplicate_external_ids"] = [
+        external_id for external_id in external_ids if external_id
+    ]
+
+    for champ in (
+        "title",
+        "company_name",
+        "company",
+        "location_label",
+        "location",
+        "contract_type",
+        "contract_type_normalized",
+        "telework_normalized",
+        "published_at",
+        "published_date",
+        "application_deadline",
+        "url",
+        "application_url",
+        "url_canonical",
+        "job_family",
+        "job_label",
+        "job_code",
+        "category",
+    ):
+        if not nettoyer_texte(offre_reference.get(champ)):
+            offre_reference[champ] = doublon.get(champ)
+
+    offre_reference["description"] = choisir_meilleur_texte(
+        offre_reference.get("description"),
+        doublon.get("description"),
+    )
+    offre_reference["salary"] = choisir_meilleur_texte(
+        offre_reference.get("salary"),
+        doublon.get("salary"),
+    )
+
+    if (
+        not offre_reference.get("salary_currency")
+        and doublon.get("salary_currency")
+    ):
+        offre_reference["salary_currency"] = doublon.get("salary_currency")
+    if (
+        not offre_reference.get("salary_period")
+        and doublon.get("salary_period")
+    ):
+        offre_reference["salary_period"] = doublon.get("salary_period")
+
+    reference_predite = bool(offre_reference.get("salary_is_predicted"))
+    doublon_predit = bool(doublon.get("salary_is_predicted"))
+    if (
+        offre_reference.get("salary_min_normalized") is None
+        and doublon.get("salary_min_normalized") is not None
+    ) or (
+        reference_predite and not doublon_predit
+    ):
+        offre_reference["salary_min_normalized"] = doublon.get("salary_min_normalized")
+        offre_reference["salary_max_normalized"] = doublon.get("salary_max_normalized")
+        offre_reference["salary_is_predicted"] = doublon.get("salary_is_predicted")
+
+    offre_reference["skills_normalized"] = fusionner_competences(
+        offre_reference.get("skills_normalized") or [],
+        doublon.get("skills_normalized") or [],
+    )
+    offre_reference["skills"] = offre_reference["skills_normalized"]
+
+    offre_reference["completeness_score"] = max(
+        int(offre_reference.get("completeness_score") or 0),
+        int(doublon.get("completeness_score") or 0),
+    )
+    offre_reference["record_preference_score"] = max(
+        int(offre_reference.get("record_preference_score") or 0),
+        int(doublon.get("record_preference_score") or 0),
+    )
+    offre_reference["deduplication_status"] = "merged_duplicate"
 
 
 def dedoublonner_offres_normalisees(
     offres_normalisees: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Retirer les doublons evidents d'une liste d'offres normalisees.
+    """Retirer les doublons evidents et fusionner les informations utiles."""
 
-    Ce point d'entree est cense etre appele par :
-    - `src/transform/aggregate/aggregate.py`.
+    offres_tries = sorted(
+        (dict(offre) for offre in offres_normalisees if isinstance(offre, dict)),
+        key=lambda offre: (
+            int(offre.get("record_preference_score") or 0),
+            int(offre.get("scope_score") or 0),
+            int(offre.get("completeness_score") or 0),
+        ),
+        reverse=True,
+    )
 
-    Sortie attendue :
-    - une liste d'offres finalement comparables ;
-    - avec une seule occurrence par cle de deduplication.
-    """
+    index_blocs: dict[str, list[int]] = {}
+    offres_uniques: list[dict[str, Any]] = []
 
-    cles_vues: set[tuple[Any, ...]] = set()
-    offres_sans_doublons: list[dict[str, Any]] = []
+    for offre in offres_tries:
+        candidates_indexes: set[int] = set()
+        for bloc in construire_blocs_deduplication(offre):
+            for index in index_blocs.get(bloc, []):
+                candidates_indexes.add(index)
 
-    for offre in offres_normalisees:
-        cle = construire_cle_deduplication(offre)
+        reference_trouvee: dict[str, Any] | None = None
+        for index in sorted(candidates_indexes):
+            candidate = offres_uniques[index]
+            if sont_doublons(candidate, offre):
+                reference_trouvee = candidate
+                break
 
-        if cle in cles_vues:
+        if reference_trouvee is None:
+            offre["duplicate_count"] = 1
+            offre["duplicate_sources"] = [offre.get("source")]
+            offre["duplicate_origin_sources"] = [
+                offre.get("origin_source") or offre.get("source")
+            ]
+            offre["duplicate_external_ids"] = [
+                offre.get("external_id")
+            ] if offre.get("external_id") else []
+            offre["deduplication_status"] = "unique"
+            offres_uniques.append(offre)
+            nouvel_index = len(offres_uniques) - 1
+            for bloc in construire_blocs_deduplication(offre):
+                index_blocs.setdefault(bloc, []).append(nouvel_index)
             continue
 
-        cles_vues.add(cle)
-        offres_sans_doublons.append(offre)
+        fusionner_offres_doublons(reference_trouvee, offre)
 
-    return offres_sans_doublons
+    print(
+        "Nettoyage deduplication: "
+        f"{len(offres_normalisees)} offre(s) comparee(s), "
+        f"{len(offres_uniques)} offre(s) unique(s) retenue(s)."
+    )
+    return offres_uniques

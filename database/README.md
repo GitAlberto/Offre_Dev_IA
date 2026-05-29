@@ -1,36 +1,45 @@
 # Dossier `database`
 
-Ce dossier regroupe la persistance PostgreSQL du projet.
+Ce dossier regroupe la persistance SQL et Big Data du projet.
 
-On y trouve maintenant :
-- `migrations/001_create_offres.sql` : creation de la table denormalisee `offres` ;
-- `import_offres_postgresql.py` : import des JSON bruts produits par l'orchestrateur ;
-- `alimenter_postgresql_depuis_lba.py` : collecte LBA puis charge directement
-  la table PostgreSQL.
+## PostgreSQL
 
-Flux pratique retenu :
+La source `postgresql_history` relit la table `offres` deja alimentee par le
+projet.
+
+Fichiers utiles :
+- `migrations/001_create_offres.sql` : creation de la table denormalisee `offres`
+- `import_offres_postgresql.py` : import de snapshots JSON bruts vers PostgreSQL
+- `alimenter_postgresql_depuis_adzuna.py` : collecte Adzuna puis injection
+  directe en base pour simuler la source SQL
+
+Flux courant pour PostgreSQL :
 1. lancer `docker-compose up -d postgres`
-2. produire un JSON brut avec `python src/collect/collect.py`
-3. importer ce JSON dans PostgreSQL avec :
+2. alimenter la table avec Adzuna :
 
 ```powershell
-python database/import_offres_postgresql.py
+python database/alimenter_postgresql_depuis_adzuna.py --truncate-first
 ```
 
-Le script prend par defaut le `data/raw/raw_*.json` le plus recent.
-
-Commandes utiles :
+3. verifier ensuite la source SQL :
 
 ```powershell
-python database/import_offres_postgresql.py --create-schema-only
+python src/collect/collect.py --only-source postgresql_history --no-save
 ```
+
+Import manuel d'un snapshot brut :
 
 ```powershell
-python database/import_offres_postgresql.py --source la_bonne_alternance
+python database/import_offres_postgresql.py --input-path data/raw/adzuna_YYYYMMDD_HHMMSS.json --source adzuna
 ```
 
-Pont direct pour creer la source PostgreSQL a partir de LBA :
+## Hive
 
-```powershell
-python database/alimenter_postgresql_depuis_lba.py
-```
+La source `hive_aggregates` s'appuie sur le dataset `eu-tech-jobs` charge dans
+Hive puis interrogeable via Hue.
+
+Fichiers utiles :
+- `alimenter_hive_depuis_eu_tech_jobs.py` : telechargement et chargement du
+  dataset dans Hive
+- `queries/hive/load_eu_tech_jobs.hql` : creation des objets Hive
+- `queries/hive/extraction_hive.hql` : requete d'agregation relue par le projet

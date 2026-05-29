@@ -13,4 +13,6 @@ Sous-dossiers utiles :
 - `processed/` : jeux nettoyes ou exportes ;
 - `fallback/` : secours de demonstration hors ligne ;
 - `source_csv/` : depot local des vraies sources CSV d'offres, par exemple
-  `bpce.csv`, `region_ile_de_france.csv` ou `choisir_service_public.csv`.
+  `bpce.csv` ou `region_ile_de_france.csv` ;
+- `source_hive/` : depot local des datasets volumineux utilises pour la
+  simulation Hive.
