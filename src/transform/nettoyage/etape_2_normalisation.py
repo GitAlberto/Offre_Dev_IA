@@ -1,51 +1,119 @@
-"""Etape 2 de normalisation des donnees deja filtrees.
-
-Ce module intervient apres `etape_1_filtrage.py`.
-
-Pourquoi ce fichier s'appelle `etape_2_normalisation.py` :
-- il intervient logiquement apres le filtrage brut ;
-- il harmonise les lignes avant toute comparaison entre sources ;
-- il prepare directement la deduplication finale.
-
-Ce qu'il est cense faire plus tard :
-- harmoniser les noms de champs importants ;
-- convertir les dates dans un format stable ;
-- transformer les salaires dans une representation comparable ;
-- uniformiser les competences, les types de contrat et les localisations.
-
-Ce qui est cense l'appeler :
-- `src/transform/aggregate/aggregate.py`, apres la phase de nettoyage.
-
-Ce que ce module n'est pas cense faire :
-- la fusion finale de toutes les sources ;
-- l'ecriture du dataset final CSV ;
-- la logique de collecte.
-"""
+"""Etape 2 : normalisation canonique des enregistrements filtres."""
 
 from __future__ import annotations
 
 from typing import Any
+
+from .utils import (
+    AGGREGATE_SOURCE_NAMES,
+    SOURCE_PRIORITY,
+    calculer_completeness_score,
+    convertir_vers_datetime_iso,
+    decouper_texte_signature,
+    extraire_infos_salaire,
+    nettoyer_texte,
+    normaliser_liste_competences,
+    normaliser_teletravail,
+    normaliser_texte_match,
+    normaliser_type_contrat,
+    normaliser_url,
+)
 
 
 def normaliser_ligne_source(
     nom_source: str,
     ligne_filtree: dict[str, Any],
 ) -> dict[str, Any]:
-    """Normaliser une ligne provenant d'une source precise.
+    """Normaliser une ligne provenant d'une source precise."""
 
-    Ce helper est volontairement simple a ce stade.
+    if nom_source in AGGREGATE_SOURCE_NAMES:
+        count_value = ligne_filtree.get("count") or ligne_filtree.get("nb")
+        try:
+            count_normalized = int(count_value)
+        except (TypeError, ValueError):
+            count_normalized = 0
 
-    Plus tard, il devra appliquer des regles source par source, par exemple :
-    - convertir une date ISO, francaise ou timestamp vers un format commun ;
-    - uniformiser les champs `title`, `titre`, `intitule` ;
-    - rapprocher plusieurs representations d'un salaire.
-    """
+        return {
+            **dict(ligne_filtree),
+            "source": nom_source,
+            "record_kind": "aggregate",
+            "competence": nettoyer_texte(ligne_filtree.get("competence")),
+            "region": nettoyer_texte(ligne_filtree.get("region")),
+            "count": count_normalized,
+            "normalization_status": "normalized_aggregate",
+        }
 
     ligne_normalisee = dict(ligne_filtree)
-
-    # On garde une trace explicite de la source et de l'etape de traitement.
     ligne_normalisee["source"] = nom_source
-    ligne_normalisee.setdefault("normalization_status", "pending_rules")
+    ligne_normalisee["record_kind"] = "offer"
+    ligne_normalisee["origin_source"] = nettoyer_texte(
+        ligne_filtree.get("origin_source")
+    ) or nom_source
+
+    title = nettoyer_texte(ligne_filtree.get("title"))
+    company_name = nettoyer_texte(
+        ligne_filtree.get("company_name") or ligne_filtree.get("company")
+    )
+    location_label = nettoyer_texte(
+        ligne_filtree.get("location_label") or ligne_filtree.get("location")
+    )
+    description = nettoyer_texte(ligne_filtree.get("description"))
+    skills_normalized = normaliser_liste_competences(ligne_filtree.get("skills"))
+    contract_type_normalized = normaliser_type_contrat(
+        ligne_filtree.get("contract_type")
+    )
+    telework_normalized = normaliser_teletravail(
+        ligne_filtree.get("telework")
+        or ligne_filtree.get("remote_policy")
+        or ligne_filtree.get("weekly_work_duration")
+    )
+    published_at_iso, published_date = convertir_vers_datetime_iso(
+        ligne_filtree.get("published_at")
+    )
+    application_deadline_iso, _ = convertir_vers_datetime_iso(
+        ligne_filtree.get("application_deadline")
+    )
+    salary_info = extraire_infos_salaire(ligne_filtree)
+
+    ligne_normalisee.update(
+        {
+            "external_id": nettoyer_texte(ligne_filtree.get("external_id")),
+            "title": title,
+            "company_name": company_name,
+            "company": company_name,
+            "location_label": location_label,
+            "location": location_label,
+            "description": description,
+            "skills": skills_normalized,
+            "skills_normalized": skills_normalized,
+            "contract_type": nettoyer_texte(ligne_filtree.get("contract_type")),
+            "contract_type_normalized": contract_type_normalized,
+            "telework_normalized": telework_normalized,
+            "url": nettoyer_texte(ligne_filtree.get("url")),
+            "application_url": nettoyer_texte(ligne_filtree.get("application_url")),
+            "url_canonical": normaliser_url(
+                ligne_filtree.get("application_url") or ligne_filtree.get("url")
+            ),
+            "published_at": published_at_iso,
+            "published_date": published_date,
+            "application_deadline": application_deadline_iso,
+            "title_normalized": normaliser_texte_match(title),
+            "company_normalized": normaliser_texte_match(company_name),
+            "location_normalized": normaliser_texte_match(location_label),
+            "title_signature": decouper_texte_signature(title),
+            "company_signature": decouper_texte_signature(company_name, max_tokens=4),
+            "location_signature": decouper_texte_signature(location_label, max_tokens=4),
+            "source_priority": SOURCE_PRIORITY.get(nom_source, 0),
+            "normalization_status": "normalized_offer",
+        }
+    )
+    ligne_normalisee.update(salary_info)
+    ligne_normalisee["completeness_score"] = calculer_completeness_score(
+        ligne_normalisee
+    )
+    ligne_normalisee["record_preference_score"] = (
+        ligne_normalisee["source_priority"] + ligne_normalisee["completeness_score"]
+    )
 
     return ligne_normalisee
 
@@ -53,15 +121,7 @@ def normaliser_ligne_source(
 def normaliser_payloads_filtres(
     payloads_filtres_par_source: dict[str, list[dict[str, Any]]],
 ) -> dict[str, list[dict[str, Any]]]:
-    """Normaliser l'ensemble des payloads filtres.
-
-    Ce point d'entree est cense etre appele par :
-    - `src/transform/aggregate/aggregate.py`.
-
-    Ce qu'il renvoie :
-    - un dictionnaire par source ;
-    - avec des enregistrements prepares pour la comparaison transversale.
-    """
+    """Normaliser l'ensemble des payloads filtres."""
 
     payloads_normalises: dict[str, list[dict[str, Any]]] = {}
 

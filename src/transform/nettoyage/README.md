@@ -1,38 +1,79 @@
 # Dossier `src/transform/nettoyage`
 
-Ce dossier contient les sous-etapes du nettoyage applique aux donnees juste
-apres la collecte brute.
+Ce dossier contient la vraie logique de nettoyage appliquee juste apres la
+collecte brute.
 
 ## Role du dossier
 
-Ici, on ne fait pas encore la fusion finale du dataset.
+Ici, on ne fait pas encore l'export final.
+On prepare les donnees pour qu'elles deviennent comparables, evaluables et
+dedoublonnables.
 
-On prepare les donnees pour qu'elles deviennent comparables et exploitables :
-- `etape_1_filtrage.py` retire ou corrige les lignes brutes clairement invalides ;
-- `etape_2_normalisation.py` harmonise les formats et les noms utiles ;
-- `etape_3_deduplication.py` compare les offres comparables pour retirer les doublons.
+Les trois etapes sont :
+- `etape_1_filtrage.py` : filtrage metier et technique ;
+- `etape_2_normalisation.py` : projection dans un schema canonique commun ;
+- `etape_3_deduplication.py` : regroupement et fusion des doublons.
 
-## Pourquoi les noms sont numerotes
+## Strategie retenue
 
-Chaque nom de fichier indique explicitement l'ordre logique de traitement.
+La strategie de nettoyage est volontairement exigeante.
 
-Cela permet de comprendre d'un seul coup d'oeil :
-- quelle etape doit etre executee en premier ;
-- quelle etape depend de la precedente ;
-- dans quel ordre lire les fichiers pendant la soutenance.
+### 1. Filtrage
+
+Le filtrage ne se limite pas a supprimer les lignes vides.
+Il applique aussi :
+- un controle du type d'enregistrement ;
+- un filtrage metier data / IA / BI / cloud ;
+- une separation explicite entre vraies offres et agregats Hive ;
+- un score de perimetre pour documenter pourquoi une ligne est gardee.
+
+Cette etape est faite pour privilegier la precision plutot que le volume brut.
+
+### 2. Normalisation
+
+La normalisation met toutes les sources dans un vocabulaire commun :
+- dates converties vers un format ISO ;
+- salaires projetes vers `salary_min_normalized` / `salary_max_normalized` ;
+- URL canonisees ;
+- contrats et teletravail harmonises ;
+- competences converties en liste propre ;
+- signatures de titre, entreprise et localisation preparees pour la
+  deduplication.
+
+Cette etape calcule aussi un score de completude et un score de preference de
+source pour arbitrer proprement les doublons.
+
+### 3. Deduplication
+
+La deduplication ne fait pas qu'eliminer.
+Elle essaye de fusionner intelligemment les informations utiles :
+- blocage par URL ou signatures proches ;
+- comparaison par similarite de texte ;
+- conservation de la meilleure version d'une offre ;
+- fusion des competences et des identifiants externes ;
+- preservation des informations de provenance ;
+- remplacement d'un salaire predit par un salaire meilleur si une autre source
+  fournit plus fiable.
 
 ## Qui appelle ces fichiers
 
-Ces modules ne sont pas censes etre le point d'entree principal du projet.
+Ces modules sont appeles par :
+- `src/transform/aggregate/aggregate.py` dans le flux normal ;
+- ou par des tests ponctuels si l'on veut verifier une etape isolee.
 
-Ils doivent etre appeles par :
-- `src/transform/aggregate/aggregate.py` pour la transformation complete ;
-- ou ponctuellement par des tests unitaires si on veut verifier une etape
-  precise.
+## Ce que ces fichiers renvoient
 
-## Ce que ces fichiers doivent renvoyer
+La sortie attendue ici est une sortie intermediaire en memoire :
+- des `dict` ou `list[dict]` enrichis ;
+- deja normalises et traces ;
+- mais pas encore exportes eux-memes en CSV final.
 
-La sortie attendue ici est avant tout une sortie en memoire :
-- des `dict` ou des `list[dict]` intermediaires ;
-- deja plus propres que la collecte brute ;
-- mais pas encore ecrits eux-memes comme dataset final CSV.
+## Fichier utilitaire
+
+Le module `utils.py` centralise les briques transverses du nettoyage :
+- normalisation texte ;
+- parsing de dates ;
+- parsing de salaires ;
+- evaluation du perimetre metier ;
+- aides a la deduplication ;
+- score de completude.

@@ -1,9 +1,10 @@
-"""Collecteur exploratoire des offres Adzuna.
+"""Collecteur isole des offres Adzuna.
 
 Objectif :
-- tester la qualite de la source Adzuna avant une vraie integration pipeline ;
-- verifier la presence effective de salaires structures ;
-- rester isole du run par defaut tant que la source n'est pas validee.
+- alimenter la simulation PostgreSQL avec une source salary-friendly ;
+- garder Adzuna hors de l'orchestrateur principal pour ne pas melanger la
+  source base de donnees avec les sources live du pipeline ;
+- verifier la presence effective de salaires structures avant chargement SQL.
 
 References officielles :
 - overview : https://developer.adzuna.com/overview

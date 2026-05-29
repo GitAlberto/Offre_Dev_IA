@@ -35,7 +35,6 @@ DEFAULT_PROCESSED_OUTPUT_PATH = Path("data/processed/clean_dataset.csv")
 OFFER_SOURCE_NAMES = {
     "bpce",
     "france_travail",
-    "la_bonne_alternance",
     "region_ile_de_france",
     "welcome_to_the_jungle",
     "postgresql_history",
@@ -86,7 +85,7 @@ def get_processed_output_path(
 def construire_dataset_final_agrege(
     payloads_collectes_par_source: dict[str, list[dict[str, Any]]],
 ) -> list[dict[str, Any]]:
-    """Construire le dataset final agrege a partir des donnees collecteess.
+    """Construire le dataset final agrege a partir des donnees collectees.
 
     Ordre d'appel prevu :
     1. `filtrer_payloads_collectes()`
