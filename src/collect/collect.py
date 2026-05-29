@@ -50,6 +50,10 @@ DEFAULT_FRANCE_TRAVAIL_MAX_RESULTS = 150
 DEFAULT_FRANCE_TRAVAIL_MAX_PAGES = 20
 DEFAULT_FRANCE_TRAVAIL_QUERY_MODE = "broad"
 DEFAULT_FRANCE_TRAVAIL_TIMEOUT_SECONDS = 30
+DEFAULT_LBA_TIMEOUT_SECONDS = 120
+DEFAULT_LBA_ONLY_DIRECT_OFFERS = False
+DEFAULT_LBA_ENABLE_KEYWORD_FILTER = True
+DEFAULT_LBA_INCLUDE_RECRUITER_OPPORTUNITIES = False
 DEFAULT_WTTJ_QUERY_MODE = "focused"
 DEFAULT_BPCE_CSV_PATH = "data/source_csv/bpce.csv"
 DEFAULT_REGION_ILE_DE_FRANCE_CSV_PATH = "data/source_csv/region_ile_de_france.csv"
@@ -57,6 +61,7 @@ DEFAULT_REGION_ILE_DE_FRANCE_CSV_PATH = "data/source_csv/region_ile_de_france.cs
 SOURCE_KEYS = {
     "france_travail": "france_travail",
     "welcome_to_the_jungle": "welcome_to_the_jungle",
+    "la_bonne_alternance": "la_bonne_alternance",
     "bpce": "bpce",
     "region_ile_de_france": "region_ile_de_france",
     "postgresql_history": "postgresql_history",
@@ -70,6 +75,10 @@ SOURCE_IMPORT_SPECS = {
     SOURCE_KEYS["welcome_to_the_jungle"]: (
         "collect_offres_welcome_to_the_jungle",
         "collect_offres_welcome_to_the_jungle",
+    ),
+    SOURCE_KEYS["la_bonne_alternance"]: (
+        "collect_offres_la_bonne_alternance",
+        "collect_offres_la_bonne_alternance",
     ),
     SOURCE_KEYS["bpce"]: (
         "collect_offres_bpce",
@@ -194,6 +203,28 @@ def lire_entier_positif_ou_aucune_limite(
         return None
 
     return parsed_value
+
+
+def lire_booleen_variable_environnement(
+    raw_value: str | None,
+    default: bool,
+) -> bool:
+    """Lire un booleen simple depuis l'environnement ou la CLI."""
+
+    if raw_value is None:
+        return default
+
+    texte = str(raw_value).strip().lower()
+    if not texte:
+        return default
+
+    if texte in {"1", "true", "vrai", "yes", "oui", "on"}:
+        return True
+
+    if texte in {"0", "false", "faux", "no", "non", "off"}:
+        return False
+
+    return default
 
 
 def construire_chemin_sortie_brute(
@@ -339,6 +370,8 @@ def collecter_toutes_les_sources(
     save_per_source: bool = False,
     query_wttj: list[str] | None = None,
     wttj_query_mode: str | None = None,
+    lba_only_direct_offers: bool | None = None,
+    lba_disable_keyword_filter: bool = False,
     bpce_csv_path: str | None = None,
     region_ile_de_france_csv_path: str | None = None,
     days_back_postgresql: int = 30,
@@ -354,10 +387,11 @@ def collecter_toutes_les_sources(
     Ordre d'appel retenu :
     1. France Travail
     2. Welcome to the Jungle
-    3. BPCE
-    4. Region Ile-de-France
-    5. PostgreSQL historique
-    6. Hive aggregates
+    3. La bonne alternance
+    4. BPCE
+    5. Region Ile-de-France
+    6. PostgreSQL historique
+    7. Hive aggregates
 
     Pourquoi cet ordre :
     - il reste proche de la roadmap du projet ;
@@ -461,6 +495,43 @@ def collecter_toutes_les_sources(
             )
         )
 
+    if SOURCE_KEYS["la_bonne_alternance"] in sources_selectionnees:
+        collect_offres_la_bonne_alternance = importer_fonction_collecte(
+            SOURCE_KEYS["la_bonne_alternance"]
+        )
+        lba_api_key = os.getenv("LBA_API_KEY", "")
+        lba_timeout_seconds = int(
+            os.getenv(
+                "LBA_TIMEOUT_SECONDS",
+                str(DEFAULT_LBA_TIMEOUT_SECONDS),
+            )
+        )
+        lba_only_direct_offers_effectif = lba_only_direct_offers
+        if lba_only_direct_offers_effectif is None:
+            lba_only_direct_offers_effectif = lire_booleen_variable_environnement(
+                os.getenv("LBA_ONLY_DIRECT_OFFERS"),
+                DEFAULT_LBA_ONLY_DIRECT_OFFERS,
+            )
+        lba_enable_keyword_filter = not lba_disable_keyword_filter and (
+            lire_booleen_variable_environnement(
+                os.getenv("LBA_ENABLE_KEYWORD_FILTER"),
+                DEFAULT_LBA_ENABLE_KEYWORD_FILTER,
+            )
+        )
+        lba_include_recruiter_opportunities = lire_booleen_variable_environnement(
+            os.getenv("LBA_INCLUDE_RECRUITER_OPPORTUNITIES"),
+            DEFAULT_LBA_INCLUDE_RECRUITER_OPPORTUNITIES,
+        )
+        payloads_par_source[SOURCE_KEYS["la_bonne_alternance"]] = (
+            collect_offres_la_bonne_alternance(
+                api_key=lba_api_key,
+                timeout_seconds=lba_timeout_seconds,
+                only_direct_offers=lba_only_direct_offers_effectif,
+                enable_keyword_filter=lba_enable_keyword_filter,
+                include_recruiter_opportunities=lba_include_recruiter_opportunities,
+            )
+        )
+
     if SOURCE_KEYS["bpce"] in sources_selectionnees:
         collect_offres_bpce = importer_fonction_collecte(
             SOURCE_KEYS["bpce"]
@@ -514,9 +585,15 @@ def collecter_toutes_les_sources(
         )
         hive_host = os.getenv("HIVE_HOST", "localhost")
         hive_port = int(os.getenv("HIVE_PORT", "10000"))
+        hive_database = os.getenv("HIVE_DATABASE", "default")
+        hive_auth = os.getenv("HIVE_AUTH", "NOSASL")
+        hive_beeline_container = os.getenv("HIVE_BEELINE_CONTAINER", "jobradar-hive")
         payloads_par_source[SOURCE_KEYS["hive_aggregates"]] = collect_aggregates_hive(
             host=hive_host,
             port=hive_port,
+            database=hive_database,
+            auth=hive_auth,
+            beeline_container=hive_beeline_container,
             use_fallback=use_hive_fallback,
         )
 
@@ -576,6 +653,22 @@ def build_argument_parser() -> argparse.ArgumentParser:
         help=(
             "Strategie de requetes WTTJ. Ignoree si `--query-wttj` est fourni. "
             "`focused` est le bon mode par defaut pour enchainer plusieurs intitules data/IA."
+        ),
+    )
+    parser.add_argument(
+        "--lba-only-direct-offers",
+        action="store_true",
+        help=(
+            "Pour La bonne alternance, ne garder que les offres deposees "
+            "directement sur la plateforme et ignorer les offres partenaires."
+        ),
+    )
+    parser.add_argument(
+        "--lba-disable-keyword-filter",
+        action="store_true",
+        help=(
+            "Pour La bonne alternance, desactiver le filtrage data/IA/BI/cloud "
+            "et importer toutes les offres d'alternance disponibles."
         ),
     )
     parser.add_argument(
@@ -657,6 +750,8 @@ def main() -> None:
             save_per_source=args.save_per_source,
             query_wttj=args.query_wttj,
             wttj_query_mode=args.wttj_query_mode,
+            lba_only_direct_offers=args.lba_only_direct_offers,
+            lba_disable_keyword_filter=args.lba_disable_keyword_filter,
             bpce_csv_path=args.bpce_csv_path,
             region_ile_de_france_csv_path=args.region_ile_de_france_csv_path,
             days_back_postgresql=args.days_back_postgresql,

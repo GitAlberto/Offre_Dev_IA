@@ -23,19 +23,38 @@ Limite importante :
 
 from __future__ import annotations
 
+import csv
+import subprocess
 from pathlib import Path
 from typing import Any
 
+try:
+    from pyhive import hive
+except ImportError:  # pragma: no cover - repli simple si pyhive manque
+    hive = None
 
-DEFAULT_HIVE_FALLBACK_PATH = Path("data/fallback/hive_agregats.csv")
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_HIVE_FALLBACK_PATH = PROJECT_ROOT / "data" / "fallback" / "hive_agregats.csv"
+DEFAULT_HIVE_QUERY_PATH = PROJECT_ROOT / "queries" / "hive" / "extraction_hive.hql"
+DEFAULT_HIVE_DATABASE = "default"
+DEFAULT_HIVE_AUTH = "NOSASL"
+DEFAULT_HIVE_BEELINE_CONTAINER = "jobradar-hive"
 
 
-def build_hive_aggregate_query() -> str:
+def build_hive_aggregate_query(
+    query_path: Path = DEFAULT_HIVE_QUERY_PATH,
+) -> str:
     """Construire la requete Hive par defaut pour recuperer les agregats.
 
     Appelant attendu :
     - `collect_aggregates_hive()`.
     """
+
+    if query_path.exists():
+        query = query_path.read_text(encoding="utf-8").strip()
+        if query:
+            return query
 
     return (
         "SELECT competence, COUNT(*) AS nb, region "
@@ -54,15 +73,103 @@ def map_hive_aggregate_row(raw_row: dict[str, Any]) -> dict[str, Any]:
     return {
         "source": "hive_aggregates",
         "competence": raw_row.get("competence"),
-        "count": raw_row.get("nb"),
+        "count": raw_row.get("nb") or raw_row.get("count"),
         "region": raw_row.get("region"),
         "raw_payload": raw_row,
     }
 
 
+def lire_fallback_hive(
+    fallback_path: Path = DEFAULT_HIVE_FALLBACK_PATH,
+) -> list[dict[str, Any]]:
+    """Lire le CSV de secours Hive si present."""
+
+    if not fallback_path.exists():
+        return []
+
+    with fallback_path.open("r", encoding="utf-8", newline="") as file:
+        reader = csv.DictReader(file)
+        return [
+            map_hive_aggregate_row(dict(row))
+            for row in reader
+            if isinstance(row, dict)
+        ]
+
+
+def executer_requete_hive_via_beeline(
+    query: str,
+    database: str = DEFAULT_HIVE_DATABASE,
+    container_name: str = DEFAULT_HIVE_BEELINE_CONTAINER,
+) -> list[dict[str, Any]]:
+    """Executer une requete Hive via `beeline` dans le conteneur Docker."""
+
+    command = [
+        "docker",
+        "exec",
+        container_name,
+        "/opt/hive/bin/beeline",
+        "--silent=true",
+        "--showHeader=true",
+        "--outputformat=tsv2",
+        "-u",
+        f"jdbc:hive2://localhost:10000/{database}",
+        "-e",
+        query,
+    ]
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    prefixes_a_ignorer = (
+        "SLF4J:",
+        "[WARN]",
+        "No such file or directory",
+        "Connecting to ",
+        "Connected to:",
+        "Driver:",
+        "Transaction isolation:",
+        "Beeline version ",
+        "Closing:",
+        "INFO  :",
+    )
+    lignes_utiles = [
+        line.strip()
+        for line in completed.stdout.splitlines()
+        if line.strip()
+        and not line.strip().startswith(prefixes_a_ignorer)
+    ]
+    if not lignes_utiles:
+        return []
+
+    separateur = "\t" if "\t" in lignes_utiles[0] else None
+    en_tetes = (
+        [cell.strip() for cell in lignes_utiles[0].split("\t")]
+        if separateur == "\t"
+        else [lignes_utiles[0].strip()]
+    )
+    resultats: list[dict[str, Any]] = []
+
+    for line in lignes_utiles[1:]:
+        valeurs = (
+            [cell.strip() for cell in line.split("\t")]
+            if separateur == "\t"
+            else [line.strip()]
+        )
+        if len(valeurs) != len(en_tetes):
+            continue
+        resultats.append(dict(zip(en_tetes, valeurs)))
+
+    return resultats
+
+
 def collect_aggregates_hive(
     host: str = "localhost",
     port: int = 10000,
+    database: str = DEFAULT_HIVE_DATABASE,
+    auth: str = DEFAULT_HIVE_AUTH,
+    beeline_container: str = DEFAULT_HIVE_BEELINE_CONTAINER,
     use_fallback: bool = True,
     fallback_path: Path = DEFAULT_HIVE_FALLBACK_PATH,
 ) -> list[dict[str, Any]]:
@@ -83,9 +190,62 @@ def collect_aggregates_hive(
     """
 
     query = build_hive_aggregate_query()
-    _ = host
-    _ = port
-    _ = query
-    _ = use_fallback
-    _ = fallback_path
-    return []
+
+    if hive is None:
+        print("Hive: `pyhive` n'est pas installe, lecture Big Data ignoree.")
+        if use_fallback:
+            return lire_fallback_hive(fallback_path=fallback_path)
+        return []
+
+    try:
+        with hive.Connection(
+            host=host,
+            port=port,
+            username="hive",
+            database=database,
+            auth=auth,
+        ) as connection:
+            cursor = connection.cursor()
+            cursor.execute(query)
+            colonnes = [column[0] for column in cursor.description or []]
+            lignes = cursor.fetchall()
+    except Exception as exc:  # pragma: no cover - depend de l'environnement Docker
+        print(f"Hive: echec de lecture PyHive : {exc}")
+        try:
+            lignes_beeline = executer_requete_hive_via_beeline(
+                query=query,
+                database=database,
+                container_name=beeline_container,
+            )
+        except Exception as beeline_exc:  # pragma: no cover - depend de Docker
+            print(f"Hive: echec de lecture beeline : {beeline_exc}")
+        else:
+            agregats_beeline = [
+                map_hive_aggregate_row(raw_row)
+                for raw_row in lignes_beeline
+            ]
+            print(
+                "Hive: "
+                f"{len(agregats_beeline)} agregat(s) relu(s) via beeline depuis {beeline_container}."
+            )
+            return agregats_beeline
+
+        if use_fallback:
+            lignes_fallback = lire_fallback_hive(fallback_path=fallback_path)
+            if lignes_fallback:
+                print(
+                    "Hive: "
+                    f"{len(lignes_fallback)} agregat(s) relu(s) depuis le CSV de secours."
+                )
+            return lignes_fallback
+        return []
+
+    agregats = [
+        map_hive_aggregate_row(dict(zip(colonnes, row)))
+        for row in lignes
+    ]
+    print(
+        "Hive: "
+        f"{len(agregats)} agregat(s) relu(s) depuis {host}:{port}/{database}."
+    )
+    return agregats

@@ -24,6 +24,7 @@ Chaque fichier de ce dossier doit :
 
 - `collect_offres_france_travail.py`
 - `collect_offres_welcome_to_the_jungle.py`
+- `collect_offres_la_bonne_alternance.py`
 - `collect_offres_bpce.py`
 - `collect_offres_region_ile_de_france.py`
 - `collect_offres_postgresql_history.py`
@@ -53,13 +54,17 @@ Dans l'etat actuel du projet :
   un fichier `data/fallback/fallback_france_travail.json` ou `.csv` ;
 - `collect_offres_welcome_to_the_jungle.py` sait scraper des pages metier WTTJ
   avec Selenium ;
+- `collect_offres_la_bonne_alternance.py` sait recuperer l'export JSON officiel
+  LBA sur jeton puis filtrer le perimetre data / IA / BI / cloud ;
 - `collect_offres_bpce.py` sait telecharger puis lire le CSV officiel riche
   des offres Groupe BPCE ;
 - `collect_offres_region_ile_de_france.py` sait telecharger puis lire le CSV
   officiel des offres de la Region Ile-de-France ;
 - `collect_offres_choisir_service_public.py` reste disponible comme source CSV
   secondaire plus volumineuse mais moins detaillee ;
-- PostgreSQL et Hive restent encore au stade squelette documente.
+- `collect_offres_postgresql_history.py` sait relire la table PostgreSQL `offres`
+  deja alimentee par le projet ;
+- Hive reste encore au stade squelette documente.
 
 ## Flux prevu
 
@@ -69,7 +74,8 @@ Le flux cible sera le suivant :
 - `src/collect/fonctions/*.py` collectent chaque source de maniere isolee ;
 - `src/transform/nettoyage/*.py` filtrent, normalisent et dedoublonnent ;
 - `src/transform/aggregate/aggregate.py` fusionne les sorties transformees ;
-- `database/import_data.py` importera ensuite les donnees nettoyees.
+- `database/import_offres_postgresql.py` importe ensuite les JSON bruts choisis
+  dans PostgreSQL.
 
 ## Ou retrouver la sortie d'un fichier de collect
 

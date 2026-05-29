@@ -35,6 +35,7 @@ DEFAULT_PROCESSED_OUTPUT_PATH = Path("data/processed/clean_dataset.csv")
 OFFER_SOURCE_NAMES = {
     "bpce",
     "france_travail",
+    "la_bonne_alternance",
     "region_ile_de_france",
     "welcome_to_the_jungle",
     "postgresql_history",

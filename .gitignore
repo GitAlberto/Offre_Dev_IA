@@ -26,3 +26,5 @@ data/processed/*
 !data/processed/README.md
 data/source_csv/*
 !data/source_csv/README.md
+data/source_hive/*
+!data/source_hive/README.md
