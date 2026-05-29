@@ -26,12 +26,19 @@ Premier niveau de concret :
 - la source `France Travail` est maintenant la premiere source avec un vrai
   connecteur HTTP exploitable ;
 - la source `Welcome to the Jungle` fonctionne maintenant en scraping Selenium ;
+- la source `La bonne alternance` ajoute un gros flux officiel d'offres
+  d'alternance via export JSON sur jeton ;
 - la source `BPCE` est maintenant la source CSV principale du projet ;
 - la source `Region Ile-de-France` s'ajoute comme deuxieme vraie source CSV ;
 - le collecteur `Choisir le Service Public` reste disponible en complement si
   l'on veut reutiliser une source publique plus volumineuse mais moins riche ;
-- PostgreSQL et Hive conservent encore un role de squelette documente en
-  attendant leur implementation progressive.
+- PostgreSQL sait maintenant recevoir puis relire les offres stockees ;
+- Hive conserve encore un role de squelette documente en attendant son
+  implementation progressive.
+
+Pour simuler la source PostgreSQL a partir d'une vraie source amont,
+`La bonne alternance` peut maintenant servir a remplir directement la table
+`offres` via `database/alimenter_postgresql_depuis_lba.py`.
 
 ## Ou retrouver la sortie de la collecte
 
@@ -55,6 +62,7 @@ Exemple de structure retournee :
 {
     "france_travail": [...],
     "welcome_to_the_jungle": [...],
+    "la_bonne_alternance": [...],
     "bpce": [...],
     "region_ile_de_france": [...],
     "postgresql_history": [...],
@@ -89,6 +97,9 @@ Options deja prevues :
 - `--save-per-source` : ecrit aussi un fichier brut distinct par source ;
 - `--query-wttj` : permet de changer la requete Welcome to the Jungle ;
 - `--wttj-query-mode` : choisit une strategie de requetes WTTJ ;
+- `--lba-only-direct-offers` : ne garde sur LBA que les offres deposees
+  directement sur la plateforme ;
+- `--lba-disable-keyword-filter` : desactive le filtrage data/IA/BI/cloud sur LBA ;
 - `--bpce-csv-path` : force le chemin du fichier CSV BPCE ;
 - `--region-ile-de-france-csv-path` : force le chemin du fichier CSV Region Ile-de-France ;
 - `--only-source` : isole une ou plusieurs sources sans commenter du code ;
@@ -107,6 +118,11 @@ Variables d'environnement deja utilisees par la collecte :
 - `FRANCE_TRAVAIL_MAX_RESULTS`
 - `FRANCE_TRAVAIL_MAX_PAGES`
 - `FRANCE_TRAVAIL_TIMEOUT_SECONDS`
+- `LBA_API_KEY`
+- `LBA_TIMEOUT_SECONDS`
+- `LBA_ONLY_DIRECT_OFFERS`
+- `LBA_ENABLE_KEYWORD_FILTER`
+- `LBA_INCLUDE_RECRUITER_OPPORTUNITIES`
 - `WTTJ_QUERY_MODE`
 - `WTTJ_MAX_PAGES`
 - `WTTJ_TIMEOUT_SECONDS`
@@ -117,6 +133,9 @@ Variables d'environnement deja utilisees par la collecte :
 - `DATABASE_URL`
 - `HIVE_HOST`
 - `HIVE_PORT`
+- `HIVE_DATABASE`
+- `HIVE_AUTH`
+- `HIVE_BEELINE_CONTAINER`
 
 ### Apres la collecte
 

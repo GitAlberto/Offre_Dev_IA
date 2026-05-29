@@ -12,9 +12,9 @@ On y trouvera :
 
 ## Fichiers racine
 
-- `.env.example` : template des variables d'environnement pour PostgreSQL, Hive, France Travail et l'API.
+- `.env.example` : template des variables d'environnement pour PostgreSQL, Hive, Hue, France Travail et l'API.
 - `requirements.txt` : dependances Python minimales du projet.
-- `docker-compose.yml` : socle Docker pour PostgreSQL et Hive.
+- `docker-compose.yml` : socle Docker pour PostgreSQL, Hive et Hue.
 - `.gitignore` : ignore les secrets, caches Python et sorties generees.
 - `roadmap_jobradar_bloc1.md` : feuille de route du projet.
 
@@ -25,6 +25,7 @@ Le depot est volontairement en phase de squelette :
 - chaque dossier contient un `README.md` explicatif ;
 - les fichiers racine minimaux sont prets ;
 - le code metier sera ajoute et teste pas a pas.
+- l'infrastructure Hive + Hue est maintenant preparee pour la suite Big Data.
 
 ## Prochaine etape
 
